@@ -13,38 +13,20 @@ import (
 	"time"
 
 	"code.fbi.h-da.de/distributed-systems/praktika/lab-for-distributed-systems-2025-sose/moore/Mo-4X-TeamE/pkg/http"
+	"code.fbi.h-da.de/distributed-systems/praktika/lab-for-distributed-systems-2025-sose/moore/Mo-4X-TeamE/pkg/types"
 )
 
-// Sensor represents a specific type of sensor that will pick up the sensor data
-type Sensor struct {
-	ID                     string  //sensor type identifier
-	Name                   string  //name that can be read by us
-	MinValue               float64 //minimum value the sensor can produce
-	MaxValue               float64 //maximum value the sensor can produce
-	Unit                   string  //unit of measurement used in the sensor
-	NoiseLevel             float64 //how much noise to add to base value (percentage)
-	DataGenerationInterval int     //data generation interval in milliseconds
-}
-
-// SensorData represents a sensor reading, meaning each data point picked up by the sensors will have these values
-type SensorData struct {
-	SensorID  string    `json:"sensorId"`  //from which sensor did we get this value?
-	Timestamp time.Time `json:"timestamp"` //at what time was this value picked up?
-	Value     float64   `json:"value"`     //the actual value that was picked up, we consider it to be smth like temperature, for now at least
-	Unit      string    `json:"unit"`      //the unit of the value picked up
-}
-
-// Gateway represents the IoT Gateway that will send the data using POST over HTTPS using a TCP Socket.
+// Gateway represents the IoT Gateway(client) that will send the data using POST over HTTPS using a TCP Socket.
 type Gateway struct {
-	ServerURL        string   //the URL for the server that receives the data
-	Sensors          []Sensor //the collection of sensors that send data using this gateway
-	InstancesPerType int
-	Client           *http.Client
-	StopChan         chan struct{} //channel for concurrent communication
-	WaitGroup        sync.WaitGroup
+	ServerURL      string         //the URL for the server that receives the data
+	Sensors        []types.Sensor //the collection of sensors that send data using this gateway
+	SensorsPerType int            //the number of sensors per type of a sensor (temp sensor, pressure sensor etc)
+	Client         *http.Client   //the client that will be used to communicate with the server over http
+	StopChan       chan struct{}  //channel for concurrent communication
+	WaitGroup      sync.WaitGroup //ensures that the gateway won't terminate until all its goroutines have completed their work, which is important for clean shutdown.
 }
 
-var sensors = []Sensor{
+var sensors = []types.Sensor{
 	{
 		ID:                     "temp",
 		Name:                   "Temperature Sensor",
@@ -84,13 +66,13 @@ var sensors = []Sensor{
 }
 
 // GatewayFactory creates a new IoT Gateway and returns the fresh instance
-func GatewayFactory(serverURL string, instancesPerType int) *Gateway {
+func GatewayFactory(serverURL string, sensorsPerType int) *Gateway {
 	return &Gateway{
-		ServerURL:        serverURL,
-		Sensors:          sensors,
-		InstancesPerType: instancesPerType,
-		Client:           http.NewClient(5 * time.Second),
-		StopChan:         make(chan struct{}),
+		ServerURL:      serverURL,
+		Sensors:        sensors,
+		SensorsPerType: sensorsPerType,
+		Client:         http.NewClient(5 * time.Second),
+		StopChan:       make(chan struct{}),
 	}
 }
 
@@ -99,12 +81,12 @@ func (g *Gateway) Start() {
 	log.Printf(
 		"Starting IoT Gateway with %d sensor types, %d instances each",
 		len(g.Sensors),
-		g.InstancesPerType,
+		g.SensorsPerType,
 	)
 
 	//start sensor data simulation for each sensor type and instance
 	for _, sensorType := range g.Sensors {
-		for i := 0; i < g.InstancesPerType; i++ {
+		for i := 0; i < g.SensorsPerType; i++ {
 			sensorID := fmt.Sprintf("%s-%d", sensorType.ID, i+1)
 			g.WaitGroup.Add(1)
 			go g.simulateSensor(sensorType, sensorID)
@@ -123,7 +105,7 @@ func (g *Gateway) Stop() {
 }
 
 // simulateSensor simulates a sensor and sends data to the server
-func (g *Gateway) simulateSensor(sensorType Sensor, sensorID string) {
+func (g *Gateway) simulateSensor(sensorType types.Sensor, sensorID string) {
 	defer g.WaitGroup.Done()
 
 	//create a ticker for periodic data generation
@@ -150,7 +132,7 @@ func (g *Gateway) simulateSensor(sensorType Sensor, sensorID string) {
 		case <-ticker.C:
 			//generate sensor data with some noise and drift
 			value := g.generateSensorValue(baseValue, sensorType)
-			data := SensorData{
+			data := types.SensorData{
 				SensorID:  sensorID,
 				Timestamp: time.Now(),
 				Value:     value,
@@ -178,7 +160,7 @@ func (g *Gateway) simulateSensor(sensorType Sensor, sensorID string) {
 }
 
 // generateSensorValue generates a sensor value based on a base value
-func (g *Gateway) generateSensorValue(baseValue float64, sensorType Sensor) float64 {
+func (g *Gateway) generateSensorValue(baseValue float64, sensorType types.Sensor) float64 {
 	//add noise to the base value
 	noise := (rand.Float64()*2 - 1) * sensorType.NoiseLevel * baseValue
 	value := baseValue + noise
@@ -194,7 +176,7 @@ func (g *Gateway) generateSensorValue(baseValue float64, sensorType Sensor) floa
 }
 
 // applyDrift applies a small random drift to the base value
-func (g *Gateway) applyDrift(baseValue float64, sensorType Sensor) float64 {
+func (g *Gateway) applyDrift(baseValue float64, sensorType types.Sensor) float64 {
 	//small random drift (0.1% of range)
 	driftRange := (sensorType.MaxValue - sensorType.MinValue) * 0.001
 	drift := (rand.Float64()*2 - 1) * driftRange
@@ -212,7 +194,7 @@ func (g *Gateway) applyDrift(baseValue float64, sensorType Sensor) float64 {
 }
 
 // sendData sends sensor data to the server
-func (g *Gateway) sendData(data SensorData) error {
+func (g *Gateway) sendData(data types.SensorData) error {
 	//convert data to JSON
 	jsonData, err := json.Marshal(data)
 	if err != nil {
