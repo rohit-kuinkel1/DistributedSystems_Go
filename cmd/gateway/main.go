@@ -18,12 +18,12 @@ import (
 
 // Gateway represents the IoT Gateway(client) that will send the data using POST over HTTPS using a TCP Socket.
 type Gateway struct {
-	ServerURL      string         //the URL for the server that receives the data
-	Sensors        []types.Sensor //the collection of sensors that send data using this gateway
-	SensorsPerType int            //the number of sensors per type of a sensor (temp sensor, pressure sensor etc)
-	Client         *http.Client   //the client that will be used to communicate with the server over http
-	StopChan       chan struct{}  //channel for concurrent communication
-	WaitGroup      sync.WaitGroup //ensures that the gateway won't terminate until all its goroutines have completed their work, which is important for clean shutdown.
+	ServerURL      string           //the URL for the server that will receive the data sent by this gateway
+	Sensors        []types.Sensor   //the collection of sensors that send data using this gateway
+	SensorsPerType int              //the number of sensors per type of a sensor (temp sensor, pressure sensor etc)
+	Client         *http.HttpClient //the client that will be used to communicate with the server over http
+	StopChan       chan struct{}    //channel for concurrent communication
+	WaitGroup      sync.WaitGroup   //ensures that the gateway won't terminate until all its goroutines have completed their work, which is important for clean shutdown.
 }
 
 var sensors = []types.Sensor{
@@ -43,7 +43,7 @@ var sensors = []types.Sensor{
 		MaxValue:               80.0,
 		Unit:                   "%",
 		NoiseLevel:             0.05,
-		DataGenerationInterval: 2000,
+		DataGenerationInterval: 500,
 	},
 	{
 		ID:                     "press",
@@ -71,7 +71,7 @@ func GatewayFactory(serverURL string, sensorsPerType int) *Gateway {
 		ServerURL:      serverURL,
 		Sensors:        sensors,
 		SensorsPerType: sensorsPerType,
-		Client:         http.NewClient(5 * time.Second),
+		Client:         http.HttpClientFactory(5 * time.Second),
 		StopChan:       make(chan struct{}),
 	}
 }
@@ -88,24 +88,17 @@ func (g *Gateway) Start() {
 	for _, sensorType := range g.Sensors {
 		for i := 0; i < g.SensorsPerType; i++ {
 			sensorID := fmt.Sprintf("%s-%d", sensorType.ID, i+1)
+			//waitgroup is basically a thread safe bag that helps to coordinate go routines
 			g.WaitGroup.Add(1)
+			//run the sensor simulatenously and independently, goroutines are GOs way of saying Threads
 			go g.simulateSensor(sensorType, sensorID)
 		}
 	}
 }
 
-// Stop stops the IoT Gateway
-func (g *Gateway) Stop() {
-	log.Println("Stopping IoT Gateway...")
-
-	close(g.StopChan)
-	g.WaitGroup.Wait()
-
-	log.Println("IoT Gateway stopped")
-}
-
 // simulateSensor simulates a sensor and sends data to the server
 func (g *Gateway) simulateSensor(sensorType types.Sensor, sensorID string) {
+	//no matter what happens in this func, you will decrease the counter once we return from this func
 	defer g.WaitGroup.Done()
 
 	//create a ticker for periodic data generation
@@ -157,6 +150,17 @@ func (g *Gateway) simulateSensor(sensorType types.Sensor, sensorID string) {
 			baseValue = g.applyDrift(baseValue, sensorType)
 		}
 	}
+}
+
+// Stop stops the IoT Gateway
+func (g *Gateway) Stop() {
+	log.Println("Stopping IoT Gateway...")
+
+	close(g.StopChan)
+	//waits for the counter to reach 0 before actually closing
+	g.WaitGroup.Wait()
+
+	log.Println("IoT Gateway stopped")
 }
 
 // generateSensorValue generates a sensor value based on a base value
