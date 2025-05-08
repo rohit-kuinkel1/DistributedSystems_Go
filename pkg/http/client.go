@@ -50,6 +50,7 @@ func (c *HttpClient) sendRequest(method, url string, body []byte, contentType st
 	if err != nil {
 		return nil, fmt.Errorf("error connecting to %s: %w", addr, err)
 	}
+
 	defer conn.Close()
 
 	//set connection timeout
