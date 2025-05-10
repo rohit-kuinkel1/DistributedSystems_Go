@@ -1,4 +1,3 @@
-
 ifeq ($(OS),Windows_NT)
     RM := rmdir /s /q
     MKDIR := mkdir
@@ -14,7 +13,7 @@ endif
 #ensure bin directory exists before building
 $(shell $(MKDIR) bin 2>/dev/null)
 
-.PHONY: build test-functional test-performance clean docker-build docker-run all
+.PHONY: build test-functional test-performance clean docker-build docker-run all test
 
 all: build
 
@@ -37,6 +36,9 @@ else
 	$(RM) bin
 endif
 	@echo "Clean completed successfully"
+
+test: clean build test-functional test-performance
+	@echo "All tests completed successfully"
 
 docker-build:
 	docker-compose build
