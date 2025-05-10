@@ -74,7 +74,7 @@ func main() {
 	server := http.ServerFactory(*host, *port)
 
 	flag.Parse()
-	dataLimit := flag.Int("data-limit", 1000, "Maximum number of data points to keep")
+	dataLimit := flag.Int("data-limit", 1_000_000, "Maximum number of data points to keep")
 	dataStore := DataStoreFactory(*dataLimit)
 
 	registerHandlers(server, dataStore)

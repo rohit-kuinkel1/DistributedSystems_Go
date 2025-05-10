@@ -13,9 +13,9 @@ type RequestHandler func(*Request) *Response
 
 // Server represents an HTTP server
 type Server struct {
-	Host     string
-	Port     int
-	Handlers map[string]RequestHandler
+	Host     string                    //URL for the server to be hosted at; like http://localhost
+	Port     int                       //the PORT for the server to be hosted at; 8080 for example
+	Handlers map[string]RequestHandler //all the handlers that are supported by this server, for example POST or GET
 	listener net.Listener
 	wg       sync.WaitGroup
 	running  bool
@@ -27,7 +27,7 @@ func ServerFactory(host string, port int) *Server {
 	return &Server{
 		Host:     host,
 		Port:     port,
-		Handlers: make(map[string]RequestHandler),
+		Handlers: make(map[string]RequestHandler), //just alloc the space for now
 	}
 }
 
@@ -93,6 +93,7 @@ func (s *Server) acceptConnections() {
 			running := s.running
 			s.mutex.Unlock()
 
+			//the server has shut down so we dont have any errors to print
 			if !running {
 				break
 			}
