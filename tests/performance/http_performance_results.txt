@@ -2,13 +2,13 @@ HTTP Performance Test Results
 ============================
 
 Total requests:     1000000
-Min RTT:            78.208µs
-Max RTT:            86.9605ms
-Mean RTT:           488.621µs
+Min RTT:            69.334µs
+Max RTT:            95.381916ms
+Mean RTT:           483.759µs
 Median RTT:         0s
-Standard deviation: 986.088µs
-90th percentile:    627.667µs
-95th percentile:    722µs
-99th percentile:    1.252625ms
-Requests per second: 2046.57
-Total duration:     8m8.6217953s
+Standard deviation: 1.058229ms
+90th percentile:    620.792µs
+95th percentile:    711.583µs
+99th percentile:    1.189917ms
+Requests per second: 2067.14
+Cumulative RTT across all requests sent:     8m3.759029375s

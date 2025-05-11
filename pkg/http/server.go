@@ -16,7 +16,7 @@ type Server struct {
 	Host     string                    //URL for the server to be hosted at; like http://localhost
 	Port     int                       //the PORT for the server to be hosted at; 8080 for example
 	Handlers map[string]RequestHandler //all the handlers that are supported by this server, for example POST or GET
-	listener net.Listener
+	listener net.Listener              //represents our TCP listener
 	wg       sync.WaitGroup
 	running  bool
 	mutex    sync.Mutex

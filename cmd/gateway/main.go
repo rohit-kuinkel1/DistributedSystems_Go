@@ -284,7 +284,7 @@ func main() {
 	//parse command line arguments
 	serverHost := flag.String("server-host", "localhost", "Server hostname")
 	serverPort := flag.Int("server-port", 8080, "Server port")
-	instancesPerType := flag.Int("instances", 1, "Number of instances per sensor type")
+	instancesPerType := flag.Int("instances", 5, "Number of instances per sensor type")
 	duration := flag.Int("duration", 0, "Run duration in seconds (0 = run until interrupted)")
 	flag.Parse()
 

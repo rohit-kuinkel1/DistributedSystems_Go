@@ -79,6 +79,7 @@ func main() {
 
 	registerHandlers(server, dataStore)
 
+	//the listener for the TCP is also added in Start
 	err := server.Start()
 	if err != nil {
 		log.Fatalf("Failed to start server: %v", err)
@@ -217,7 +218,7 @@ func registerHandlers(server *http.Server, dataStore *DataStore) {
 						tr:nth-child(even) { background-color: #f9f9f9; }
 					</style>
 					<script>
-						// Fetch data every 5 seconds
+						// Fetch data every x seconds
 						function fetchData() {
 							fetch('/data')
 								.then(response => response.json())
@@ -241,7 +242,7 @@ func registerHandlers(server *http.Server, dataStore *DataStore) {
 						// Initial fetch and setup interval
 						document.addEventListener('DOMContentLoaded', () => {
 							fetchData();
-							setInterval(fetchData, 5000);
+							setInterval(fetchData, 1000);
 						});
 					</script>
 				</head>
