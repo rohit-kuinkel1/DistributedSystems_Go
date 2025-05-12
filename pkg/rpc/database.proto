@@ -1,7 +1,7 @@
 syntax = "proto3";
 
 package database;
-option go_package = "code.fbi.h-da.de/distributed-systems/praktika/lab-for-distributed-systems-2025-sose/moore/Mo-4X-TeamE/pkg/rpc";
+option go_package = "pkg/generated/rpc";
 
 import "google/protobuf/timestamp.proto";
 
