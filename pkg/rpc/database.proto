@@ -1,0 +1,48 @@
+syntax = "proto3";
+
+package database;
+option go_package = "code.fbi.h-da.de/distributed-systems/praktika/lab-for-distributed-systems-2025-sose/moore/Mo-4X-TeamE/pkg/rpc";
+
+import "google/protobuf/timestamp.proto";
+
+service DatabaseService {
+  //add operation
+  rpc CreateSensorData(SensorDataRequest) returns (OperationResponse);
+  
+  //read operations
+  rpc GetAllSensorData(EmptyRequest) returns (SensorDataList);
+  rpc GetSensorDataBySensorId(SensorIdRequest) returns (SensorDataList);
+  
+  //update operation (idk if we will ever update the data, but lets define it for now)
+  rpc UpdateSensorData(SensorDataRequest) returns (OperationResponse);
+  
+  //delete operation
+  rpc DeleteSensorData(SensorIdRequest) returns (OperationResponse);
+}
+
+// Message for sensor data
+message SensorDataRequest {
+  string sensor_id = 1;
+  google.protobuf.Timestamp timestamp = 2;
+  double value = 3;
+  string unit = 4;
+}
+
+//response for all the operations (as defined in DatabaseService)
+message OperationResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+//a collection of sensor data points
+message SensorDataList {
+  repeated SensorDataRequest data = 1;
+}
+
+//to getting all data
+message EmptyRequest {}
+
+//a request but with sensor ID included
+message SensorIdRequest {
+  string sensor_id = 1;
+}
