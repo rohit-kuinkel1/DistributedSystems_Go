@@ -6,18 +6,32 @@ This README covers setup, build, test, and run instructions across different ope
 #### macOS
 ```bash
 brew install go
+brew install protobuf
 ```
 
 #### Linux (Ubuntu/Debian)
 ```bash
 sudo apt update
 sudo apt install golang-go
+sudo apt install -y protobuf-compiler
 ```
 
 #### Windows
-- Download the installer from [go.dev/dl](https://go.dev/dl/)
-- Run the installer and follow the instructions
-- Alternatively, use Chocolatey: `choco install golang`
+```bash 
+choco install golang
+choco install protoc
+```
+
+#### All Platforms 
+``` bash 
+go get google.golang.org/protobuf/cmd/protoc-gen-go
+go get google.golang.org/grpc/cmd/protoc-gen-go-grpc
+
+go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+```
+
+
 
 ### Make Installation
 
