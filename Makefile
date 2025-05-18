@@ -28,6 +28,7 @@ build: generate
 	go build -o bin$(PATHSEP)server$(BINARY_EXT) ./cmd/server
 	go build -o bin$(PATHSEP)gateway$(BINARY_EXT) ./cmd/gateway
 	go build -o bin$(PATHSEP)sensor$(BINARY_EXT) ./cmd/sensor
+	go build -o bin$(PATHSEP)database$(BINARY_EXT) ./cmd/database
 	@echo "Build completed successfully"
 
 test-functional:
