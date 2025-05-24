@@ -152,7 +152,7 @@ func (c *Client) RunPerformanceTest(iterations int) (min, max, avg time.Duration
 	var total time.Duration
 	min = time.Hour //start with a large value initially
 
-	for i := 0; i < iterations; i++ {
+	for range iterations {
 		rtt, err := c.MeasureRPCLatency()
 		if err != nil {
 			return 0, 0, 0, err
