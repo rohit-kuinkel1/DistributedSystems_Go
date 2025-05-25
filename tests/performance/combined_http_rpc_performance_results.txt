@@ -1,0 +1,30 @@
+Combined HTTP+RPC Performance Test Results
+==========================================
+
+HTTP Performance (under RPC load):
+----------------------------------
+Total requests:     1000000
+Min RTT:            211.334µs
+Max RTT:            197.282042ms
+Mean RTT:           851.469µs
+Median RTT:         748.125µs
+Standard deviation: 2.145624ms
+90th percentile:    1.045459ms
+95th percentile:    1.184958ms
+99th percentile:    1.733208ms
+Requests per second: 1174.44
+Total duration:     14m11.469275635s
+
+RPC Performance (background load):
+----------------------------------
+Total requests:     1000000
+Min RTT:            30.666µs
+Max RTT:            189.030833ms
+Mean RTT:           281.561µs
+Median RTT:         240.708µs
+Standard deviation: 1.185346ms
+90th percentile:    398.167µs
+95th percentile:    472.75µs
+99th percentile:    719.667µs
+Requests per second: 3551.63
+Total duration:     4m41.56115739s
