@@ -23,7 +23,13 @@ type Client struct {
 // NewClient creates a new client connected to the database service
 func NewClient(serverAddr string) (*Client, error) {
 	//set up the conn to our server
-	conn, err := grpc.NewClient(serverAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient(serverAddr,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithDefaultCallOptions(
+			grpc.MaxCallRecvMsgSize(200*1024*1024), //200MB receive limit
+			grpc.MaxCallSendMsgSize(200*1024*1024), //200MB send limit
+		),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to database server: %w", err)
 	}

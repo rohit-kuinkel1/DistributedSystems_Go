@@ -22,6 +22,12 @@ FROM alpine:latest
 
 WORKDIR /app
 
+# Install required tools for health checks and debugging
+RUN apk add --no-cache \
+    netcat-openbsd \
+    wget \
+    curl
+
 #copy binaries from builder stage
 COPY --from=builder /app/bin/server /app/bin/server
 COPY --from=builder /app/bin/gateway /app/bin/gateway
