@@ -28,7 +28,10 @@ func main() {
 		log.Fatalf("Failed to listen on %s: %v", addr, err)
 	}
 
-	grpcServer := grpc.NewServer()
+	grpcServer := grpc.NewServer(
+		grpc.MaxRecvMsgSize(200*1024*1024), //200MB receive limit
+		grpc.MaxSendMsgSize(200*1024*1024), //200MB send limit
+	)
 
 	databaseService := database.DatabaseServiceFactory(*dataLimit)
 	pb.RegisterDatabaseServiceServer(grpcServer, databaseService)
