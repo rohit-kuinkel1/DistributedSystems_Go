@@ -129,7 +129,7 @@ test-combined-performance:
 	./bin/database$(BINARY_EXT) -port 50051 -data-limit 1000000 &
 	@sleep 2
 	@echo "Running combined HTTP+RPC performance tests..."
-	go test -v ./tests/performance/combined_test.go -timeout 2m
+	go test -v ./tests/performance/combined_test.go -timeout 6m
 	@echo "Stopping database service..."
 	pkill -f "database -port 50051" || true
 

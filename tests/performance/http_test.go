@@ -6,9 +6,10 @@ import (
 	"log"
 	"math"
 	"os"
-	"sort"
 	"testing"
 	"time"
+
+	"slices"
 
 	"code.fbi.h-da.de/distributed-systems/praktika/lab-for-distributed-systems-2025-sose/moore/Mo-4X-TeamE/pkg/http"
 	"code.fbi.h-da.de/distributed-systems/praktika/lab-for-distributed-systems-2025-sose/moore/Mo-4X-TeamE/pkg/types"
@@ -40,18 +41,18 @@ func TestRawHTTPPerformance(t *testing.T) {
 	log.Printf("Starting raw HTTP performance test with %d requests from %d concurrent clients",
 		numRequests, concurrentClients)
 
-	// Channel for RTT measurements
+	//channel for RTT measurements
 	rtts := make(chan time.Duration, numRequests)
 	done := make(chan struct{})
 
-	// Start the clients
+	//start the clients
 	requestsPerClient := numRequests / concurrentClients
-	for i := 0; i < concurrentClients; i++ {
+	for i := range concurrentClients {
 		go func(clientID int) {
 			client := http.HttpClientFactory(5 * time.Second)
 
-			for j := 0; j < requestsPerClient; j++ {
-				// Send request and measure RTT
+			for range requestsPerClient {
+				//send request and measure RTT
 				start := time.Now()
 				resp, err := client.PostJSON(url, jsonData)
 				if err != nil {
@@ -60,17 +61,14 @@ func TestRawHTTPPerformance(t *testing.T) {
 				}
 				rtt := time.Since(start)
 
-				// Check response
 				if resp.StatusCode != http.StatusOK {
 					log.Printf("Client %d: Expected status 200, got %d", clientID, resp.StatusCode)
 					continue
 				}
 
-				// Send RTT measurement
 				rtts <- rtt
 			}
 
-			// Signal completion
 			done <- struct{}{}
 		}(i)
 	}
@@ -82,13 +80,11 @@ func TestRawHTTPPerformance(t *testing.T) {
 
 	close(rtts)
 
-	// Collect RTT measurements
 	var rttValues []time.Duration
 	for rtt := range rtts {
 		rttValues = append(rttValues, rtt)
 	}
 
-	// Calculate statistics
 	stats := calculateRawHTTPStatistics(rttValues)
 
 	log.Printf("Raw HTTP Performance Test Results:")
@@ -130,25 +126,18 @@ func calculateRawHTTPStatistics(rtts []time.Duration) RawHTTPStatistics {
 		return RawHTTPStatistics{}
 	}
 
-	// Sort the values for percentile calculations
-	sort.Slice(rtts, func(i, j int) bool {
-		return rtts[i] < rtts[j]
-	})
+	slices.Sort(rtts)
 
 	count := len(rtts)
-
-	// Min and max
 	min := rtts[0]
 	max := rtts[count-1]
 
-	// Mean
 	var sum time.Duration
 	for _, rtt := range rtts {
 		sum += rtt
 	}
 	mean := sum / time.Duration(count)
 
-	// Median
 	var median time.Duration
 	if count%2 == 0 {
 		median = (rtts[count/2-1] + rtts[count/2]) / 2
@@ -156,7 +145,6 @@ func calculateRawHTTPStatistics(rtts []time.Duration) RawHTTPStatistics {
 		median = rtts[count/2]
 	}
 
-	// Standard deviation
 	var sumSquaredDifferences float64
 	for _, rtt := range rtts {
 		diff := float64(rtt - mean)
@@ -165,7 +153,6 @@ func calculateRawHTTPStatistics(rtts []time.Duration) RawHTTPStatistics {
 	variance := sumSquaredDifferences / float64(count)
 	stdDev := time.Duration(math.Sqrt(variance))
 
-	// Percentiles
 	p90Index := int(float64(count) * 0.9)
 	p95Index := int(float64(count) * 0.95)
 	p99Index := int(float64(count) * 0.99)
@@ -174,7 +161,7 @@ func calculateRawHTTPStatistics(rtts []time.Duration) RawHTTPStatistics {
 	percentile95 := rtts[p95Index]
 	percentile99 := rtts[p99Index]
 
-	// Total duration and requests per second
+	//total duration and requests per second
 	totalDuration := sum
 	requestsPerSecond := float64(count) / totalDuration.Seconds()
 

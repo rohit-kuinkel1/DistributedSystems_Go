@@ -17,8 +17,8 @@ import (
 	"code.fbi.h-da.de/distributed-systems/praktika/lab-for-distributed-systems-2025-sose/moore/Mo-4X-TeamE/pkg/types"
 )
 
-// TestCombinedHTTPRPCPerformance tests HTTP performance while RPC interface is under load
-func TestCombinedHTTPRPCPerformance(t *testing.T) {
+// TestCompleteHTTPRPCPerformance tests both baseline and under-load scenarios
+func TestCompleteHTTPRPCPerformance(t *testing.T) {
 	serverHost := "localhost"
 	serverPort := 8083
 	dbAddr := "localhost:50051"
@@ -41,18 +41,8 @@ func TestCombinedHTTPRPCPerformance(t *testing.T) {
 
 	time.Sleep(100 * time.Millisecond)
 
-	//test parameters
-	httpRequests := 1_000_000
-	rpcRequests := 1_000_000
-	concurrentHTTPClients := 10
-	concurrentRPCClients := 10
-
-	log.Printf("Starting combined HTTP+RPC performance test")
-	log.Printf("HTTP: %d requests from %d concurrent clients", httpRequests, concurrentHTTPClients)
-	log.Printf("RPC: %d requests from %d concurrent clients (background load)", rpcRequests, concurrentRPCClients)
-
 	testData := types.SensorData{
-		SensorID:  "combined-perf-test",
+		SensorID:  "complete-perf-test",
 		Timestamp: time.Now(),
 		Value:     25.5,
 		Unit:      "°C",
@@ -64,6 +54,89 @@ func TestCombinedHTTPRPCPerformance(t *testing.T) {
 	}
 
 	url := fmt.Sprintf("http://%s:%d/data", serverHost, serverPort)
+
+	// Test 1: HTTP+RPC Baseline (no background load)
+	log.Println("=== Starting HTTP+RPC Baseline Performance Test ===")
+	baselineStats := runHTTPBaselineTest(t, url, jsonData)
+
+	// Allow system to cool down between tests
+	time.Sleep(2 * time.Second)
+
+	// Test 2: HTTP+RPC Under Load (with background RPC load)
+	log.Println("=== Starting HTTP+RPC Under Load Performance Test ===")
+	httpStats, rpcStats := runHTTPRPCLoadTest(t, url, jsonData, dbClient, testData)
+
+	// Write comprehensive results
+	err = writeCompleteResultsToFile(baselineStats, httpStats, rpcStats, "complete_http_rpc_performance_results.txt")
+	if err != nil {
+		t.Errorf("Failed to write results to file: %v", err)
+	}
+
+	log.Println("Complete HTTP+RPC performance test finished")
+}
+
+// runHTTPBaselineTest runs HTTP requests against HTTP+RPC system without background load
+func runHTTPBaselineTest(t *testing.T, url string, jsonData []byte) CombinedStatistics {
+	httpRequests := 1_000_000
+	concurrentHTTPClients := 10
+
+	log.Printf("Running HTTP+RPC baseline test: %d requests from %d concurrent clients",
+		httpRequests, concurrentHTTPClients)
+
+	httpRTTs := make(chan time.Duration, httpRequests)
+	var wg sync.WaitGroup
+
+	requestsPerClient := httpRequests / concurrentHTTPClients
+	for i := 0; i < concurrentHTTPClients; i++ {
+		wg.Add(1)
+		go func(clientID int) {
+			defer wg.Done()
+			client := http.HttpClientFactory(5 * time.Second)
+
+			for j := 0; j < requestsPerClient; j++ {
+				start := time.Now()
+				resp, err := client.PostJSON(url, jsonData)
+				if err != nil {
+					log.Printf("HTTP Client %d: Error: %v", clientID, err)
+					continue
+				}
+				rtt := time.Since(start)
+
+				if resp.StatusCode != http.StatusOK {
+					log.Printf("HTTP Client %d: Expected status 200, got %d", clientID, resp.StatusCode)
+					continue
+				}
+
+				httpRTTs <- rtt
+			}
+		}(i)
+	}
+
+	wg.Wait()
+	close(httpRTTs)
+
+	// Collect results
+	var httpRTTValues []time.Duration
+	for rtt := range httpRTTs {
+		httpRTTValues = append(httpRTTValues, rtt)
+	}
+
+	stats := calculateCombinedStatistics(httpRTTValues, "HTTP+RPC-Baseline")
+	logStatistics(stats)
+
+	return stats
+}
+
+// runHTTPRPCLoadTest runs the existing combined load test
+func runHTTPRPCLoadTest(t *testing.T, url string, jsonData []byte, dbClient *database.Client, testData types.SensorData) (CombinedStatistics, CombinedStatistics) {
+	httpRequests := 1_000_000
+	rpcRequests := 1_000_000
+	concurrentHTTPClients := 10
+	concurrentRPCClients := 10
+
+	log.Printf("Running HTTP+RPC under load test")
+	log.Printf("HTTP: %d requests from %d concurrent clients", httpRequests, concurrentHTTPClients)
+	log.Printf("RPC: %d requests from %d concurrent clients (background load)", rpcRequests, concurrentRPCClients)
 
 	//channels for collecting results
 	httpRTTs := make(chan time.Duration, httpRequests)
@@ -139,21 +212,15 @@ func TestCombinedHTTPRPCPerformance(t *testing.T) {
 		rpcRTTValues = append(rpcRTTValues, rtt)
 	}
 
-	httpStats := calculateCombinedStatistics(httpRTTValues, "HTTP")
-	rpcStats := calculateCombinedStatistics(rpcRTTValues, "RPC")
+	httpStats := calculateCombinedStatistics(httpRTTValues, "HTTP+RPC-UnderLoad")
+	rpcStats := calculateCombinedStatistics(rpcRTTValues, "RPC-BackgroundLoad")
 
-	log.Printf("Combined Performance Test Results:")
 	log.Printf("HTTP (under RPC load):")
 	logStatistics(httpStats)
 	log.Printf("RPC (background load):")
 	logStatistics(rpcStats)
 
-	err = writeCombinedResultsToFile(httpStats, rpcStats, "combined_http_rpc_performance_results.txt")
-	if err != nil {
-		t.Errorf("Failed to write results to file: %v", err)
-	}
-
-	log.Println("Combined HTTP+RPC performance test completed")
+	return httpStats, rpcStats
 }
 
 // registerTestHandler registers a simple handler for performance testing
@@ -263,6 +330,7 @@ func calculateCombinedStatistics(rtts []time.Duration, protocol string) Combined
 
 // logStatistics logs performance statistics
 func logStatistics(stats CombinedStatistics) {
+	log.Printf("  Protocol: %s", stats.Protocol)
 	log.Printf("  Total requests:     %d", stats.Count)
 	log.Printf("  Min RTT:            %v", stats.Min)
 	log.Printf("  Max RTT:            %v", stats.Max)
@@ -275,24 +343,41 @@ func logStatistics(stats CombinedStatistics) {
 	log.Printf("  Requests per second: %.2f", stats.RequestsPerSecond)
 }
 
-// writeCombinedResultsToFile writes combined test results to a file
-func writeCombinedResultsToFile(httpStats, rpcStats CombinedStatistics, filename string) error {
+// writeCompleteResultsToFile writes all test results to a comprehensive file
+func writeCompleteResultsToFile(baselineStats, httpUnderLoadStats, rpcStats CombinedStatistics, filename string) error {
 	file, err := os.Create(filename)
 	if err != nil {
 		return err
 	}
 	defer file.Close()
 
-	file.WriteString("Combined HTTP+RPC Performance Test Results\n")
+	file.WriteString("Complete HTTP+RPC Performance Test Results\n")
 	file.WriteString("==========================================\n\n")
 
-	file.WriteString("HTTP Performance (under RPC load):\n")
-	file.WriteString("----------------------------------\n")
-	writeStatsToFile(file, httpStats)
+	file.WriteString("HTTP+RPC Baseline Performance (no background load):\n")
+	file.WriteString("---------------------------------------------------\n")
+	writeStatsToFile(file, baselineStats)
 
-	file.WriteString("\nRPC Performance (background load):\n")
-	file.WriteString("----------------------------------\n")
+	file.WriteString("\nHTTP+RPC Performance (under RPC background load):\n")
+	file.WriteString("--------------------------------------------------\n")
+	writeStatsToFile(file, httpUnderLoadStats)
+
+	file.WriteString("\nRPC Background Load Performance:\n")
+	file.WriteString("--------------------------------\n")
 	writeStatsToFile(file, rpcStats)
+
+	//calculate performance degradation
+	file.WriteString("\nPerformance Impact Analysis:\n")
+	file.WriteString("============================\n")
+
+	if baselineStats.Count > 0 && httpUnderLoadStats.Count > 0 {
+		meanDegradation := float64(httpUnderLoadStats.Mean-baselineStats.Mean) / float64(baselineStats.Mean) * 100
+		throughputDegradation := (baselineStats.RequestsPerSecond - httpUnderLoadStats.RequestsPerSecond) / baselineStats.RequestsPerSecond * 100
+
+		fmt.Fprintf(file, "Mean RTT increase under load: %.1f%%\n", meanDegradation)
+		fmt.Fprintf(file, "Throughput decrease under load: %.1f%%\n", throughputDegradation)
+		fmt.Fprintf(file, "Baseline vs Under Load Ratio: %.2fx slower\n", float64(httpUnderLoadStats.Mean)/float64(baselineStats.Mean))
+	}
 
 	return nil
 }
