@@ -7,31 +7,81 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
-	"code.fbi.h-da.de/distributed-systems/praktika/lab-for-distributed-systems-2025-sose/moore/Mo-4X-TeamE/internal/database"
 	"code.fbi.h-da.de/distributed-systems/praktika/lab-for-distributed-systems-2025-sose/moore/Mo-4X-TeamE/pkg/http"
 	"code.fbi.h-da.de/distributed-systems/praktika/lab-for-distributed-systems-2025-sose/moore/Mo-4X-TeamE/pkg/types"
 )
 
+// DataStore manages the storage of sensor data with thread safety
+type DataStore struct {
+	mutex sync.RWMutex //our mutex which can have N number of readers but only 1 writer at a given time
+	data  []types.SensorData
+	limit int //maximum number of data points to keep
+}
+
+// DataStoreFactory creates a new data store with a specified size limit
+func DataStoreFactory(limit int) *DataStore {
+	return &DataStore{
+		data:  make([]types.SensorData, 0, limit),
+		limit: limit,
+	}
+}
+
+// AddDataPoint adds a new sensor data point to the store
+func (ds *DataStore) AddDataPoint(sensorData types.SensorData) {
+	ds.mutex.Lock()
+	defer ds.mutex.Unlock()
+
+	ds.data = append(ds.data, sensorData)
+
+	//if we've exceeded the limit, remove the oldest data points (FIFO)
+	if len(ds.data) > ds.limit {
+		ds.data = ds.data[len(ds.data)-ds.limit:]
+	}
+}
+
+// GetAllDataPoints returns all stored sensor data
+func (ds *DataStore) GetAllDataPoints() []types.SensorData {
+	ds.mutex.RLock()
+	defer ds.mutex.RUnlock()
+
+	//create a copy of the data to avoid race conditions
+	result := make([]types.SensorData, len(ds.data))
+	copy(result, ds.data)
+	return result
+}
+
+// GetDataPointBySensorId returns data for a specific sensor
+func (ds *DataStore) GetDataPointBySensorId(sensorID string) []types.SensorData {
+	ds.mutex.RLock()
+	defer ds.mutex.RUnlock()
+
+	var result []types.SensorData
+	for _, data := range ds.data {
+		if data.SensorID == sensorID {
+			result = append(result, data)
+		}
+	}
+	return result
+}
+
 func main() {
 	host := flag.String("host", "0.0.0.0", "Server host")
 	port := flag.Int("port", 8080, "Server port")
-	dbAddr := flag.String("db-addr", "localhost:50051", "Database server address")
-	flag.Parse()
-
-	dbClient, err := database.NewClient(*dbAddr)
-	if err != nil {
-		log.Fatalf("Failed to connect to database service: %v", err)
-	}
-	defer dbClient.Close()
+	dataLimit := flag.Int("data-limit", 1_000_000, "Maximum number of data points to keep")
 
 	server := http.ServerFactory(*host, *port)
 
-	registerHandlers(server, dbClient)
+	flag.Parse()
+	dataStore := DataStoreFactory(*dataLimit)
 
-	err = server.Start()
+	registerHandlers(server, dataStore)
+
+	//the listener for the TCP is also added in Start
+	err := server.Start()
 	if err != nil {
 		log.Fatalf("Failed to start server: %v", err)
 	}
@@ -46,8 +96,8 @@ func main() {
 }
 
 // registerHandlers registers all HTTP handlers for the server
-func registerHandlers(server *http.Server, dbClient *database.Client) {
-	//for HTTP POST requests to add sensor data
+func registerHandlers(server *http.Server, dataStore *DataStore) {
+	//handler for HTTP POST requests to add sensor data
 	server.RegisterHandler(
 		http.POST,
 		"/data",
@@ -73,15 +123,8 @@ func registerHandlers(server *http.Server, dbClient *database.Client) {
 				sensorData.Timestamp = time.Now()
 			}
 
-			//store the data using the database client now that we have all things needed
-			err = dbClient.AddDataPoint(sensorData)
-			if err != nil {
-				log.Printf("Error storing data: %v", err)
-				resp := http.NewResponse(http.StatusServerError)
-				resp.SetBodyString(fmt.Sprintf("Error storing data: %v", err))
-				return resp
-			}
-
+			//store the data
+			dataStore.AddDataPoint(sensorData)
 			log.Printf(
 				"Stored data from sensor %s: %.2f %s",
 				sensorData.SensorID,
@@ -89,25 +132,22 @@ func registerHandlers(server *http.Server, dbClient *database.Client) {
 				sensorData.Unit,
 			)
 
+			//return a success response
 			resp := http.NewResponse(http.StatusOK)
 			resp.SetBodyString("Data stored successfully")
 			return resp
 		},
 	)
 
-	//for HTTP GET requests to retrieve all sensor data
+	//handler for HTTP GET requests to retrieve all sensor data
 	server.RegisterHandler(
 		http.GET,
 		"/data",
 		func(req *http.Request) *http.Response {
-			allData, err := dbClient.GetAllDataPoints()
-			if err != nil {
-				log.Printf("Error retrieving data: %v", err)
-				resp := http.NewResponse(http.StatusServerError)
-				resp.SetBodyString(fmt.Sprintf("Error retrieving data: %v", err))
-				return resp
-			}
+			//get all data from the data store
+			allData := dataStore.GetAllDataPoints()
 
+			//convert to JSON before sending the data
 			jsonData, err := json.Marshal(allData)
 			if err != nil {
 				log.Printf("Error marshaling data to JSON: %v", err)
@@ -116,16 +156,17 @@ func registerHandlers(server *http.Server, dbClient *database.Client) {
 				return resp
 			}
 
+			//return the JSON response
 			return http.CreateJSONResponse(http.StatusOK, jsonData)
 		},
 	)
 
-	//for HTTP GET requests to retrieve data for a specific sensor
+	// Handler for HTTP GET requests to retrieve data for a specific sensor
 	server.RegisterHandler(
 		http.GET,
 		"/data/*",
 		func(req *http.Request) *http.Response {
-			// Extract sensor ID from path
+			//extract sensor ID from path
 			path := req.Path
 			if path == "/data/" {
 				resp := http.NewResponse(http.StatusBadRequest)
@@ -135,13 +176,8 @@ func registerHandlers(server *http.Server, dbClient *database.Client) {
 
 			sensorID := path[6:] // Remove "/data/"
 
-			sensorData, err := dbClient.GetDataPointBySensorId(sensorID)
-			if err != nil {
-				log.Printf("Error retrieving data for sensor %s: %v", sensorID, err)
-				resp := http.NewResponse(http.StatusServerError)
-				resp.SetBodyString(fmt.Sprintf("Error retrieving data: %v", err))
-				return resp
-			}
+			//get data for the specified sensor
+			sensorData := dataStore.GetDataPointBySensorId(sensorID)
 
 			if len(sensorData) == 0 {
 				resp := http.NewResponse(http.StatusNotFound)
@@ -149,6 +185,7 @@ func registerHandlers(server *http.Server, dbClient *database.Client) {
 				return resp
 			}
 
+			//convert to JSON
 			jsonData, err := json.Marshal(sensorData)
 			if err != nil {
 				log.Printf("Error marshaling data to JSON: %v", err)
@@ -157,15 +194,17 @@ func registerHandlers(server *http.Server, dbClient *database.Client) {
 				return resp
 			}
 
+			//return JSON response
 			return http.CreateJSONResponse(http.StatusOK, jsonData)
 		},
 	)
 
-	//for HTTP GET requests to the root path (for browser access)
+	//handler for HTTP GET requests to the root path (for browser access)
 	server.RegisterHandler(
 		http.GET,
 		"/",
 		func(req *http.Request) *http.Response {
+			//create a simple HTML page that displays the data
 			html := `
 				<!DOCTYPE html>
 				<html>
@@ -226,37 +265,6 @@ func registerHandlers(server *http.Server, dbClient *database.Client) {
 				</html>
 			`
 			return http.CreateHTMLResponse(http.StatusOK, []byte(html))
-		},
-	)
-
-	//handler for performance testing of the RPC interface
-	server.RegisterHandler(
-		http.GET,
-		"/performance/rpc",
-		func(req *http.Request) *http.Response {
-			iterations := 1_000_000 //number of test iterations
-			min, max, avg, err := dbClient.RunPerformanceTest(iterations)
-			if err != nil {
-				resp := http.NewResponse(http.StatusServerError)
-				resp.SetBodyString(fmt.Sprintf("Performance test failed: %v", err))
-				return resp
-			}
-
-			result := map[string]interface{}{
-				"iterations": iterations,
-				"min_rtt":    min.String(),
-				"max_rtt":    max.String(),
-				"avg_rtt":    avg.String(),
-			}
-
-			jsonData, err := json.Marshal(result)
-			if err != nil {
-				resp := http.NewResponse(http.StatusServerError)
-				resp.SetBodyString(fmt.Sprintf("Error marshaling results: %v", err))
-				return resp
-			}
-
-			return http.CreateJSONResponse(http.StatusOK, jsonData)
 		},
 	)
 }

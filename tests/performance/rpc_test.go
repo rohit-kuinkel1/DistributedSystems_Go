@@ -1,112 +1,76 @@
 package performance
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
 	"math"
 	"os"
+	"sort"
 	"testing"
 	"time"
 
-	"slices"
-
-	"code.fbi.h-da.de/distributed-systems/praktika/lab-for-distributed-systems-2025-sose/moore/Mo-4X-TeamE/pkg/http"
+	"code.fbi.h-da.de/distributed-systems/praktika/lab-for-distributed-systems-2025-sose/moore/Mo-4X-TeamE/internal/database"
 	"code.fbi.h-da.de/distributed-systems/praktika/lab-for-distributed-systems-2025-sose/moore/Mo-4X-TeamE/pkg/types"
 )
 
-// TestRawHTTPPerformance tests the performance of the raw HTTP server (Task 2 - local storage only)
-func TestRawHTTPPerformance(t *testing.T) {
-	serverHost := "localhost"
-	serverPort := 8080
-	numRequests := 1_000_000
-	concurrentClients := 10
-
-	time.Sleep(500 * time.Millisecond)
-
-	testData := types.SensorData{
-		SensorID:  "raw-http-perf-test",
-		Timestamp: time.Now(),
-		Value:     23.5,
-		Unit:      "°C",
-	}
-
-	jsonData, err := json.Marshal(testData)
+// TestRPCPerformance tests the performance of RPC calls to the database service
+func TestRPCPerformance(t *testing.T) {
+	client, err := database.NewClient("localhost:50051")
 	if err != nil {
-		t.Fatalf("Failed to marshal JSON: %v", err)
+		t.Fatalf("Failed to connect to database service: %v", err)
+	}
+	defer client.Close()
+
+	numRequests := 1_000_000
+	log.Printf("Starting RPC performance test with %d requests", numRequests)
+
+	//collect RTT measurements
+	var rtts []time.Duration
+	testData := types.SensorData{
+		SensorID:  "rpc-perf-test",
+		Timestamp: time.Now(),
+		Value:     42.0,
+		Unit:      "test",
 	}
 
-	url := fmt.Sprintf("http://%s:%d/data", serverHost, serverPort)
+	//measure RTT for each RPC call
+	for i := range numRequests {
+		start := time.Now()
 
-	log.Printf("Starting raw HTTP performance test with %d requests from %d concurrent clients",
-		numRequests, concurrentClients)
+		err := client.AddDataPoint(testData)
+		if err != nil {
+			t.Errorf("RPC call %d failed: %v", i, err)
+			continue
+		}
 
-	//channel for RTT measurements
-	rtts := make(chan time.Duration, numRequests)
-	done := make(chan struct{})
-
-	//start the clients
-	requestsPerClient := numRequests / concurrentClients
-	for i := range concurrentClients {
-		go func(clientID int) {
-			client := http.HttpClientFactory(5 * time.Second)
-
-			for range requestsPerClient {
-				//send request and measure RTT
-				start := time.Now()
-				resp, err := client.PostJSON(url, jsonData)
-				if err != nil {
-					log.Printf("Client %d: Error sending request: %v", clientID, err)
-					continue
-				}
-				rtt := time.Since(start)
-
-				if resp.StatusCode != http.StatusOK {
-					log.Printf("Client %d: Expected status 200, got %d", clientID, resp.StatusCode)
-					continue
-				}
-
-				rtts <- rtt
-			}
-
-			done <- struct{}{}
-		}(i)
+		rtt := time.Since(start)
+		rtts = append(rtts, rtt)
 	}
 
-	// Wait for all clients to finish
-	for i := 0; i < concurrentClients; i++ {
-		<-done
-	}
+	//calculate statistics
+	stats := calculateRPCStatistics(rtts)
 
-	close(rtts)
-
-	var rttValues []time.Duration
-	for rtt := range rtts {
-		rttValues = append(rttValues, rtt)
-	}
-
-	stats := calculateRawHTTPStatistics(rttValues)
-
-	log.Printf("Raw HTTP Performance Test Results:")
-	log.Printf("  Total requests:    %d", stats.Count)
-	log.Printf("  Min RTT:           %v", stats.Min)
-	log.Printf("  Max RTT:           %v", stats.Max)
-	log.Printf("  Mean RTT:          %v", stats.Mean)
-	log.Printf("  Median RTT:        %v", stats.Median)
+	log.Printf("RPC Performance Test Results:")
+	log.Printf("  Total requests:     %d", stats.Count)
+	log.Printf("  Min RTT:            %v", stats.Min)
+	log.Printf("  Max RTT:            %v", stats.Max)
+	log.Printf("  Mean RTT:           %v", stats.Mean)
+	log.Printf("  Median RTT:         %v", stats.Median)
 	log.Printf("  Standard deviation: %v", stats.StdDev)
 	log.Printf("  90th percentile:    %v", stats.Percentile90)
 	log.Printf("  95th percentile:    %v", stats.Percentile95)
 	log.Printf("  99th percentile:    %v", stats.Percentile99)
 	log.Printf("  Requests per second: %.2f", stats.RequestsPerSecond)
 
-	writeRawHTTPResultsToFile(stats, "http_performance_results.txt")
+	//write results to file
+	err = writeRPCResultsToFile(stats, "rpc_performance_results.txt")
 	if err != nil {
 		t.Errorf("Failed to write results to file: %v", err)
 	}
 }
 
-// RawHTTPStatistics contains statistical measures for raw HTTP RTT measurements
-type RawHTTPStatistics struct {
+// RPCStatistics contains statistical measures for RPC RTT measurements
+type RPCStatistics struct {
 	Count             int
 	Min               time.Duration
 	Max               time.Duration
@@ -120,24 +84,29 @@ type RawHTTPStatistics struct {
 	TotalDuration     time.Duration
 }
 
-// calculateRawHTTPStatistics calculates statistical measures from RTT measurements
-func calculateRawHTTPStatistics(rtts []time.Duration) RawHTTPStatistics {
+// calculateRPCStatistics calculates statistical measures from RPC RTT measurements
+func calculateRPCStatistics(rtts []time.Duration) RPCStatistics {
 	if len(rtts) == 0 {
-		return RawHTTPStatistics{}
+		return RPCStatistics{}
 	}
 
-	slices.Sort(rtts)
+	//sort for percentile calculations
+	sort.Slice(rtts, func(i, j int) bool {
+		return rtts[i] < rtts[j]
+	})
 
 	count := len(rtts)
 	min := rtts[0]
 	max := rtts[count-1]
 
+	//calculate mean
 	var sum time.Duration
 	for _, rtt := range rtts {
 		sum += rtt
 	}
 	mean := sum / time.Duration(count)
 
+	//median
 	var median time.Duration
 	if count%2 == 0 {
 		median = (rtts[count/2-1] + rtts[count/2]) / 2
@@ -145,6 +114,7 @@ func calculateRawHTTPStatistics(rtts []time.Duration) RawHTTPStatistics {
 		median = rtts[count/2]
 	}
 
+	//sd
 	var sumSquaredDifferences float64
 	for _, rtt := range rtts {
 		diff := float64(rtt - mean)
@@ -153,6 +123,7 @@ func calculateRawHTTPStatistics(rtts []time.Duration) RawHTTPStatistics {
 	variance := sumSquaredDifferences / float64(count)
 	stdDev := time.Duration(math.Sqrt(variance))
 
+	//percentiles like in the other tst
 	p90Index := int(float64(count) * 0.9)
 	p95Index := int(float64(count) * 0.95)
 	p99Index := int(float64(count) * 0.99)
@@ -161,11 +132,11 @@ func calculateRawHTTPStatistics(rtts []time.Duration) RawHTTPStatistics {
 	percentile95 := rtts[p95Index]
 	percentile99 := rtts[p99Index]
 
-	//total duration and requests per second
+	//requests per second
 	totalDuration := sum
 	requestsPerSecond := float64(count) / totalDuration.Seconds()
 
-	return RawHTTPStatistics{
+	return RPCStatistics{
 		Count:             count,
 		Min:               min,
 		Max:               max,
@@ -180,16 +151,16 @@ func calculateRawHTTPStatistics(rtts []time.Duration) RawHTTPStatistics {
 	}
 }
 
-// writeRawHTTPResultsToFile writes test results to a file
-func writeRawHTTPResultsToFile(stats RawHTTPStatistics, filename string) error {
+// writeRPCResultsToFile writes RPC test results to a file
+func writeRPCResultsToFile(stats RPCStatistics, filename string) error {
 	file, err := os.Create(filename)
 	if err != nil {
 		return err
 	}
 	defer file.Close()
 
-	file.WriteString("Raw HTTP Performance Test Results (Task 2 - Local Storage)\n")
-	file.WriteString("=========================================================\n\n")
+	file.WriteString("RPC Performance Test Results\n")
+	file.WriteString("============================\n\n")
 
 	fmt.Fprintf(file, "Total requests:     %d\n", stats.Count)
 	fmt.Fprintf(file, "Min RTT:            %v\n", stats.Min)
