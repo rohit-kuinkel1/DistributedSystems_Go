@@ -196,3 +196,66 @@ docker-run:
 	docker-compose up
 
 test: clean build test-functional test-performance
+
+test-mqtt-performance-detailed:
+	@echo "Starting MQTT broker for performance testing..."
+	$(MAKE) run-mqtt-broker
+	@sleep 3
+	@echo "Running detailed MQTT performance tests..."
+	go test -v ./tests/performance/mqtt_performance_test.go -timeout 3m
+	@echo "Stopping MQTT broker..."
+	docker stop mosquitto || true
+	docker rm mosquitto || true
+
+test-mqtt-under-load:
+	@echo "Starting MQTT load test with system components..."
+	$(MAKE) run-mqtt-broker
+	@sleep 3
+	./bin/database$(BINARY_EXT) -port 50051 -data-limit 1000000 &
+	@sleep 2
+	./bin/server$(BINARY_EXT) -host localhost -port 8080 -db-addr localhost:50051 &
+	@sleep 2
+	./bin/gateway$(BINARY_EXT) -server-host localhost -server-port 8080 -mqtt-host localhost -mqtt-port 1883 &
+	@sleep 2
+	@echo "Running MQTT performance test with full system..."
+	go test -v ./tests/performance/mqtt_test.go -timeout 3m
+	@echo "Stopping all components..."
+	pkill -f "database" || true
+	pkill -f "server" || true
+	pkill -f "gateway" || true
+	docker stop mosquitto || true
+	docker rm mosquitto || true
+
+test-system-under-mqtt-load:
+	@echo "Testing HTTP/RPC performance while MQTT is under load..."
+	$(MAKE) run-mqtt-broker
+	@sleep 3
+	./bin/database$(BINARY_EXT) -port 50051 -data-limit 1000000 &
+	@sleep 2
+	./bin/server$(BINARY_EXT) -host localhost -port 8080 -db-addr localhost:50051 &
+	@sleep 2
+	./bin/gateway$(BINARY_EXT) -server-host localhost -server-port 8080 -mqtt-host localhost -mqtt-port 1883 &
+	@sleep 2
+	@echo "Starting background MQTT load..."
+	./bin/sensor$(BINARY_EXT) -mqtt-host localhost -mqtt-port 1883 -instances 20 -duration 120 &
+	@sleep 5
+	@echo "Testing HTTP+RPC performance under MQTT load..."
+	go test -v ./tests/performance/combined_test.go -timeout 3m
+	@echo "Stopping all components..."
+	pkill -f "sensor" || true
+	pkill -f "database" || true
+	pkill -f "server" || true
+	pkill -f "gateway" || true
+	docker stop mosquitto || true
+	docker rm mosquitto || true
+
+performance-report-complete:
+	@echo "Running performance test suite for 3.4..."
+	$(MAKE) test-http-performance
+	@sleep 5
+	$(MAKE) test-rpc-performance  
+	@sleep 5
+	$(MAKE) test-mqtt-performance-detailed
+	@sleep 5
+	$(MAKE) test-system-under-mqtt-load
+	@echo "All performance tests completed. Check *_performance_results.txt files."
