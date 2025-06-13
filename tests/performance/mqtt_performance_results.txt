@@ -1,8 +1,8 @@
 MQTT Performance Test Results
 =============================
 
-Total messages:     517922
-Test duration:      2m0.013671291s
+Total messages:     1198356
+Test duration:      2m0.013333375s
 Publishers:         1000
-Messages per second: 4315.53
-Messages per minute: 258931.50
+Messages per second: 9985.19
+Messages per minute: 599111.43
