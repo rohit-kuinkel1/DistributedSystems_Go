@@ -1,0 +1,50 @@
+Complete HTTP+RPC Performance Test Results
+==========================================
+
+HTTP+RPC Baseline Performance (no background load):
+---------------------------------------------------
+Total requests:     1000000
+Min RTT:            162.333µs
+Max RTT:            187.654625ms
+Mean RTT:           784.823µs
+Median RTT:         698.375µs
+Standard deviation: 1.957302ms
+90th percentile:    934.583µs
+95th percentile:    1.047792ms
+99th percentile:    1.529417ms
+Requests per second: 1274.17
+Total duration:     13m4.823706526s
+
+HTTP+RPC Performance (under RPC background load):
+--------------------------------------------------
+Total requests:     1000000
+Min RTT:            201.958µs
+Max RTT:            292.877125ms
+Mean RTT:           871.892µs
+Median RTT:         761.708µs
+Standard deviation: 2.362897ms
+90th percentile:    1.069083ms
+95th percentile:    1.217417ms
+99th percentile:    1.786708ms
+Requests per second: 1146.93
+Total duration:     14m31.892886637s
+
+RPC Background Load Performance:
+--------------------------------
+Total requests:     1000000
+Min RTT:            28.75µs
+Max RTT:            292.17825ms
+Mean RTT:           301.62µs
+Median RTT:         253.458µs
+Standard deviation: 1.526365ms
+90th percentile:    423.917µs
+95th percentile:    511.541µs
+99th percentile:    794.708µs
+Requests per second: 3315.42
+Total duration:     5m1.62071766s
+
+Performance Impact Analysis:
+============================
+Mean RTT increase under load: 11.1%
+Throughput decrease under load: 10.0%
+Baseline vs Under Load Ratio: 1.11x slower

@@ -249,13 +249,67 @@ test-system-under-mqtt-load:
 	docker stop mosquitto || true
 	docker rm mosquitto || true
 
-performance-report-complete:
-	@echo "Running performance test suite for 3.4..."
+test-http-under-mqtt-load:
+	@echo "Testing raw HTTP performance while MQTT is under load..."
+	$(MAKE) run-mqtt-broker
+	@sleep 3
+	@echo "Starting raw HTTP server (Task 2)..."
+	./bin/server_32$(BINARY_EXT) -host localhost -port 8080 -data-limit 1000000 &
+	@sleep 2
+	@echo "Starting background MQTT load..."
+	./bin/sensor$(BINARY_EXT) -mqtt-host localhost -mqtt-port 1883 -instances 20 -duration 120 &
+	@sleep 5
+	@echo "Testing raw HTTP performance under MQTT load..."
+	go test -v ./tests/performance/http_test.go -timeout 3m
+	@echo "Stopping components..."
+	pkill -f "server_32" || true
+	pkill -f "sensor" || true
+	docker stop mosquitto || true
+	docker rm mosquitto || true
+
+test-rpc-under-mqtt-load:
+	@echo "Testing pure RPC performance while MQTT is under load..."
+	$(MAKE) run-mqtt-broker
+	@sleep 3
+	@echo "Starting database service..."
+	./bin/database$(BINARY_EXT) -port 50051 -data-limit 1000000 &
+	@sleep 2
+	@echo "Starting background MQTT load..."
+	./bin/sensor$(BINARY_EXT) -mqtt-host localhost -mqtt-port 1883 -instances 20 -duration 120 &
+	@sleep 5
+	@echo "Testing pure RPC performance under MQTT load..."
+	go test -v ./tests/performance/rpc_test.go -timeout 3m
+	@echo "Stopping components..."
+	pkill -f "database" || true
+	pkill -f "sensor" || true
+	docker stop mosquitto || true
+	docker rm mosquitto || true
+
+#all tests for 3.4
+test-task-34-complete:
+	@echo "Running BASELINE performance tests..."
+	@echo "----------------------------------------------"
+	@echo "1.1 Raw HTTP baseline (Task 2)..."
 	$(MAKE) test-http-performance
-	@sleep 5
+	@sleep 3
+	@echo "1.2 Pure RPC baseline (Task 3)..."
 	$(MAKE) test-rpc-performance  
-	@sleep 5
+	@sleep 3
+	@echo "1.3 HTTP+RPC baseline (Task 3)..."
+	$(MAKE) test-combined-performance
+	@sleep 3
+	@echo "1.4 MQTT throughput baseline (Task 4)..."
 	$(MAKE) test-mqtt-performance-detailed
+	@sleep 3
+	@echo ""
+	@echo "Running UNDER MQTT LOAD tests..."
+	@echo "-----------------------------------------"
+	@echo "2.1 Raw HTTP under MQTT load..."
+	$(MAKE) test-http-under-mqtt-load
 	@sleep 5
+	@echo "2.2 Pure RPC under MQTT load..."
+	$(MAKE) test-rpc-under-mqtt-load
+	@sleep 5  
+	@echo "2.3 HTTP+RPC under MQTT load..."
 	$(MAKE) test-system-under-mqtt-load
-	@echo "All performance tests completed. Check *_performance_results.txt files."
+	@sleep 5

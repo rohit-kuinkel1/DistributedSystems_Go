@@ -2,13 +2,13 @@ Raw HTTP Performance Test Results (Task 2 - Local Storage)
 =========================================================
 
 Total requests:     1000000
-Min RTT:            83.708µs
-Max RTT:            101.044291ms
-Mean RTT:           510.409µs
-Median RTT:         439.583µs
-Standard deviation: 1.177356ms
-90th percentile:    660.5µs
-95th percentile:    780.625µs
-99th percentile:    1.701292ms
-Requests per second: 1959.21
-Total duration:     8m30.409833253s
+Min RTT:            97.375µs
+Max RTT:            258.852875ms
+Mean RTT:           484.799µs
+Median RTT:         425.958µs
+Standard deviation: 1.756142ms
+90th percentile:    619.333µs
+95th percentile:    702.625µs
+99th percentile:    962.666µs
+Requests per second: 2062.71
+Total duration:     8m4.79938746s

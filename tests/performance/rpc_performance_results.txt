@@ -2,13 +2,13 @@ RPC Performance Test Results
 ============================
 
 Total requests:     1000000
-Min RTT:            27.125µs
-Max RTT:            21.712417ms
-Mean RTT:           52.747µs
-Median RTT:         44.917µs
-Standard deviation: 43.644µs
-90th percentile:    71.708µs
-95th percentile:    94.292µs
-99th percentile:    169.542µs
-Requests per second: 18958.21
-Total duration:     52.747585929s
+Min RTT:            24.584µs
+Max RTT:            44.78ms
+Mean RTT:           37.304µs
+Median RTT:         35.834µs
+Standard deviation: 63.317µs
+90th percentile:    42.333µs
+95th percentile:    45.083µs
+99th percentile:    57.209µs
+Requests per second: 26806.24
+Total duration:     37.304740158s
