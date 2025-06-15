@@ -8,10 +8,10 @@ Leopold Keller  <br>
 ## Executive Summary
 
 **Findings:**
-- **MQTT delivers very good throughput**: 599,111 messages/minute with 1000 concurrent publishers
+- **MQTT delivers very good throughput**: 9,985 msg/sec with 1000 concurrent publishers
 - **Pure RPC provides best latency**: 55.2µs mean RTT, 18,101 req/sec
 - **HTTP+RPC architecture**: 928µs mean RTT, 1,077 req/sec baseline
-- **Load impact is measurable**: 8.8% RTT increase, 8.1% throughput decrease under concurrent RPC load
+- **Load impact is measurable, even after MQTT is introduced**: 8.8% RTT increase, 8.1% throughput decrease under concurrent RPC load
 
 ## Test Configurations
 
@@ -20,14 +20,14 @@ Leopold Keller  <br>
 |--------|-------------|----------|------------|---------|
 | **(HTTP)** | HTTP Server → Local Memory | 503.5 µs | 1,986 req/sec | In-memory |
 | **(RPC)** | Direct RPC → Database Service | 55.2 µs | 18,101 req/sec | External RPC |
-| **(HTTP+RPC)** | HTTP Server → RPC → Database | 928.2 µs | 1,077 req/sec | External RPC |
-| **(MQTT)** | 1000 Publishers → MQTT Broker | N/A | 599,111 msg/min | N/A |
+| **(HTTP+RPC)** | HTTP Server → RPC → Database | 928.2 µs | 1,077 req/sec| External RPC |
+| **(MQTT)** | 1000 Publishers → MQTT Broker | N/A | 9,985 msg/sec(one way communication, sending) | N/A |
 
 ### Test Environment
 - **Hardware:** M4 Air
 - **Network:** localhost (no network latency)
 - **Load Pattern:** 1,000,000 requests for HTTP/RPC tests and 1000 concurrent publishers for MQTT
-- **Test Duration:** Took 8-16 minutes for HTTP/RPC, 2 minutes for MQTT
+- **Test Duration:** 8-16 minutes for HTTP/RPC, 2 minutes for MQTT
 
 ## Baseline Performance Results
 
@@ -68,7 +68,7 @@ Leopold Keller  <br>
 1. **Pure RPC**: 47.8µs (20,914 req/sec) - Optimal for internal services
 2. **Raw HTTP**: 513.8µs (1,946 req/sec) - Good for web interfaces  
 3. **HTTP+RPC**: 928.2µs (1,077 req/sec) - Balanced for distributed systems
-4. **MQTT**: 599K msg/min - Best for data aggregation
+4. **MQTT**: 9,985 msg/sec - Best for data aggregation
 
 ## Performance Analysis
 
@@ -90,16 +90,6 @@ Overhead Analysis:
 - RTT increase: 928.2µs → 1,009.8µs (+8.8%)
 - Throughput decrease: 1,077 → 990 req/sec (-8.1%)
 - **Conclusion:** Moderate degradation under resource contention
-
-### 3. Architectural Trade-offs
-
-| Aspect | Pure RPC | Raw HTTP | HTTP+RPC | MQTT |
-|--------|----------|----------|----------|------|
-| **Latency** | Excellent (55µs) | Good (503µs) | Moderate (928µs) | N/A |
-| **Throughput** | Excellent (18K/sec) | Good (2K/sec) | Moderate (1K/sec) | Excellent (600K/min) |
-| **Scalability** | Limited clients | Web compatible | Web + distributed | Massive fan-out |
-| **Complexity** | Low | Medium | High | Medium |
-| **Use Case** | Internal services | Web APIs | Distributed systems | IoT data collection |
 
 <br>
 
@@ -137,15 +127,7 @@ Overhead Analysis:
 ## Conclusions
 
 1. **RPC is optimal for internal service communication** with 55µs latency and 18K req/sec throughput
-2. **MQTT excels at IoT data aggregation** with 600K msg/min throughput from 1000 publishers
+2. **MQTT is good at data aggregation** with ~600K msg/min throughput from 1000 publishers
 3. **HTTP+RPC provides balanced architecture** for web-accessible distributed systems despite 16x overhead vs pure RPC
 4. **Resource contention causes moderate degradation** (8-9% performance loss under concurrent load)
 5. **System architecture choices have measurable performance implications** that must align with use case requirements
-
-
-**Summary:**
-
-1. 599K messages/minute throughput with 1000 concurrent publishers demonstrates excellent scalability for IoT sensor data collection
-2. MQTT background load causes only 2% HTTP performance degradation, indicating good resource isolation
-3. 15.5% throughput increase under MQTT load suggests system optimizations or beneficial CPU/cache effects
-4. The complete IoT pipeline (Sensors → MQTT → Gateway → HTTP → RPC → Database) maintains stable performance under realistic load conditions
