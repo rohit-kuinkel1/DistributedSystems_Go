@@ -1,7 +1,7 @@
 # Performance Analysis Protocol - Distributed IoT System
 
-Rohit Kuinkel, 1116814
-Leopold Keller
+Rohit Kuinkel, 1116814 <br>
+Leopold Keller, 
 
 **Key Performance Results:**
 - **RPC-only systems deliver exceptional performance**: 45.6µs mean RTT, 21,933 req/sec
