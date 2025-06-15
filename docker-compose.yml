@@ -36,14 +36,39 @@ services:
       start_period: 10s
     restart: unless-stopped
 
+  #our MQTT Broker (Mosquitto)
+  mqtt-broker:
+    image: eclipse-mosquitto:2.0
+    container_name: mosquitto
+    ports:
+      - "1883:1883"  #MQTT port
+      - "9001:9001"  #WebSocket port
+    volumes:
+      - ./config/mosquitto.conf:/mosquitto/config/mosquitto.conf
+    networks:
+      - iiot-network
+    restart: unless-stopped
+
+  #gateway now subscribes to MQTT instead of generating data
   gateway:
     build:
       context: .
       dockerfile: Dockerfile
-    command: /app/bin/gateway -server-host server -server-port 8080 -instances 3 -duration 300
+    command: /app/bin/gateway -server-host server -server-port 8080 -mqtt-host mqtt-broker -mqtt-port 1883
     depends_on:
-      server:
-        condition: service_healthy
+      - server
+      - mqtt-broker
+    networks:
+      - iiot-network
+    restart: unless-stopped
+
+  sensors:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: /app/bin/sensor -mqtt-host mqtt-broker -mqtt-port 1883 -instances 3 -duration 300
+    depends_on:
+      - mqtt-broker
     networks:
       - iiot-network
     deploy:

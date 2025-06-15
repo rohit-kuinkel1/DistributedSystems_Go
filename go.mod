@@ -3,7 +3,10 @@ module code.fbi.h-da.de/distributed-systems/praktika/lab-for-distributed-systems
 go 1.24.2
 
 require (
+	github.com/eclipse/paho.mqtt.golang v1.5.0 // indirect
+	github.com/gorilla/websocket v1.5.3 // indirect
 	golang.org/x/net v0.39.0 // indirect
+	golang.org/x/sync v0.13.0 // indirect
 	golang.org/x/sys v0.32.0 // indirect
 	golang.org/x/text v0.24.0 // indirect
 	google.golang.org/genproto v0.0.0-20250505200425-f936aa4a68b2 // indirect
