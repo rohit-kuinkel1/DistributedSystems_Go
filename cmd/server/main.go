@@ -21,7 +21,7 @@ func main() {
 	dbAddr := flag.String("db-addr", "localhost:50051", "Database server address")
 	flag.Parse()
 
-	dbClient, err := database.NewClient(*dbAddr)
+	dbClient, err := database.ClientFactory(*dbAddr)
 	if err != nil {
 		log.Fatalf("Failed to connect to database service: %v", err)
 	}

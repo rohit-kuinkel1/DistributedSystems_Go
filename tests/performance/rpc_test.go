@@ -15,7 +15,7 @@ import (
 
 // TestRPCPerformance tests the performance of RPC calls to the database service
 func TestRPCPerformance(t *testing.T) {
-	client, err := database.NewClient("localhost:50051")
+	client, err := database.ClientFactory("localhost:50051")
 	if err != nil {
 		t.Fatalf("Failed to connect to database service: %v", err)
 	}
