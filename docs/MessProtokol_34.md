@@ -52,6 +52,9 @@ Leopold Keller  <br>
 - **Under RPC Load Throughput:** 990 req/sec (-8.1%)
 - **Architecture Impact:** HTTP parsing + JSON serialization + RPC overhead
 
+![Performance](images/performance_34.png)
+
+
 ## Complete Performance Results Summary
 
 | Test Scenario | Mean RTT | Throughput | Performance vs Baseline |
@@ -63,6 +66,11 @@ Leopold Keller  <br>
 | **HTTP+RPC (Baseline)** | 928.2µs | 1,077 req/sec | - |
 | **HTTP+RPC Under RPC Load** | 1,009.8µs | 990 req/sec | -8.1% |
 | **MQTT Throughput** | N/A | 599,111 msg/min | - |
+
+![RTT](images/rtt_34.png)
+
+![Requests](images/requests_34.png)
+
 
 ### Architecture Performance Ranking
 1. **Pure RPC**: 47.8µs (20,914 req/sec) - Optimal for internal services
