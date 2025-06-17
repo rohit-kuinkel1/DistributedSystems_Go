@@ -102,7 +102,8 @@ else
 	pkill -f "server" || echo "No server running"
 	pkill -f "server_32" || echo "No server_32 running"
 	pkill -f "gateway" || echo "No gateway running"
-	pkill -f "database" || echo "No database running"
+	pkill -f "database -port 50051" || echo "No database on 50051 running"
+	pkill -f "database -port 50052" || echo "No database on 50052 running"
 	pkill -f "sensor" || echo "No sensor running"
 	docker stop mosquitto 2>/dev/null || echo "No mosquitto container running"
 	docker rm mosquitto 2>/dev/null || echo "No mosquitto container to remove"
@@ -118,34 +119,39 @@ test-mqtt-performance:
 	docker stop mosquitto || true
 	docker rm mosquitto || true
 
-help:
-	@echo "Build & Run:"
-	@echo "  make build               - Build all components with MQTT support"
-	@echo "  make setup-mqtt          - Install MQTT dependencies"
-	@echo "  make run-mqtt-system     - Start complete MQTT system (all components)"
-	@echo ""
-	@echo "Individual Components:"
-	@echo "  make run-mqtt-broker     - Start MQTT broker (Mosquitto in Docker)"
-	@echo "  make run-database        - Start database (port 50051)"
-	@echo "  make run-server          - Start HTTP+RPC server (port 8080)"
-	@echo "  make run-gateway         - Start MQTT gateway"
-	@echo "  make run-sensor          - Start MQTT sensor simulators"
-	@echo ""
-	@echo "Performance Tests:"
-	@echo "  make test-http-performance      - Raw HTTP performance test (Task 2)"
-	@echo "  make test-performance           - HTTP+RPC performance test (Task 3)"
-	@echo "  make test-rpc-performance       - RPC performance test"
-	@echo "  make test-mqtt-performance      - MQTT throughput test (Task 4)"
-	@echo "  make test-combined-performance  - Combined HTTP+RPC load test"
-	@echo "  make performance-report         - Run all performance tests and generate report"
-	@echo ""
-	@echo "Quick Start for Task 4 (MQTT):"
-	@echo "  make build && make run-mqtt-system"
-	@echo ""
-	@echo "Utility:"
-	@echo "  make stop-all            - Stop all running components"
-	@echo "  make help               - Show this help"
+run-database-dual:
+	@echo "Starting dual database servers..."
+	./bin/database$(BINARY_EXT) -port 50051 -data-limit 1000000 &
+	./bin/database$(BINARY_EXT) -port 50052 -data-limit 1000000 &
 
+run-server-2pc:
+	@echo "Starting HTTP server with 2PC support..."
+	./bin/server$(BINARY_EXT) -host localhost -port 8080 -db-addr1 localhost:50051 -db-addr2 localhost:50052
+
+run-2pc-system: stop-all
+	@echo "Starting complete 2PC system..."
+	@echo "1. Starting dual databases..."
+	$(MAKE) run-database-dual
+	@sleep 3
+	@echo "2. Starting HTTP server with 2PC..."
+	$(MAKE) run-server-2pc &
+	@sleep 2
+	@echo "3. Starting MQTT broker..."
+	$(MAKE) run-mqtt-broker
+	@sleep 2
+	@echo "4. Starting MQTT gateway..."
+	./bin/gateway$(BINARY_EXT) -server-host localhost -server-port 8080 -mqtt-host localhost -mqtt-port 1883 &
+	@sleep 2
+	@echo "5. Starting MQTT sensors..."
+	./bin/sensor$(BINARY_EXT) -mqtt-host localhost -mqtt-port 1883 -instances 3 &
+	@echo "Complete 2PC system is running!"
+	@echo "View data at: http://localhost:8080"
+
+
+
+
+
+#tests
 test-functional:
 	go test -v ./tests/functional/...
 
@@ -179,23 +185,17 @@ test-combined-performance:
 	@echo "Stopping database service..."
 	pkill -f "database -port 50051" || true
 
-clean:
-ifeq ($(OS),Windows_NT)
-	if exist bin $(RM) bin
-	if exist pkg\generated $(RM) pkg\generated
-else
-	$(RM) bin
-	$(RM) pkg/generated
-endif
-	@echo "Clean completed successfully"
 
-docker-build:
-	docker-compose build
-
-docker-run:
-	docker-compose up
-
-test: clean build test-functional test-performance
+test-2pc-performance:
+	@echo "Starting dual database servers for 2PC testing..."
+	./bin/database$(BINARY_EXT) -port 50051 -data-limit 1000000 &
+	./bin/database$(BINARY_EXT) -port 50052 -data-limit 1000000 &
+	@sleep 3
+	@echo "Running 2PC performance tests..."
+	go test -v ./tests/performance/2pc_test.go -timeout 5m
+	@echo "Stopping database servers..."
+	pkill -f "database -port 50051" || true
+	pkill -f "database -port 50052" || true
 
 test-mqtt-performance-detailed:
 	@echo "Starting MQTT broker for performance testing..."
@@ -313,3 +313,22 @@ test-task-34-complete:
 	@echo "2.3 HTTP+RPC under MQTT load..."
 	$(MAKE) test-system-under-mqtt-load
 	@sleep 5
+
+
+clean:
+ifeq ($(OS),Windows_NT)
+	if exist bin $(RM) bin
+	if exist pkg\generated $(RM) pkg\generated
+else
+	$(RM) bin
+	$(RM) pkg/generated
+endif
+	@echo "Clean completed successfully"
+
+docker-build:
+	docker-compose build
+
+docker-run:
+	docker-compose up
+
+test: clean build test-functional test-performance
