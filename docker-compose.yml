@@ -16,15 +16,34 @@ services:
       start_period: 10s
     restart: unless-stopped
 
+  database2:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: /app/bin/database -port 50052 -data-limit 1000000
+    networks:
+      - iiot-network
+    ports:
+      - "50052:50052"
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "50052"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
   server:
     build:
       context: .
       dockerfile: Dockerfile
-    command: /app/bin/server -host 0.0.0.0 -port 8080 -db-addr database:50051
+    command: /app/bin/server -host 0.0.0.0 -port 8080 -db-addr1 database:50051 -db-addr2 database2:50052
     ports:
       - "8080:8080"
     depends_on:
       database:
+        condition: service_healthy
+      database2:
         condition: service_healthy
     networks:
       - iiot-network
