@@ -315,6 +315,118 @@ test-task-34-complete:
 	@sleep 5
 
 
+test-2pc-setup:
+	@echo "Setting up dual database servers for 2PC testing..."
+	./bin/database$(BINARY_EXT) -port 50051 -data-limit 1000000 &
+	./bin/database$(BINARY_EXT) -port 50052 -data-limit 1000000 &
+	@sleep 3
+
+test-2pc-functional: test-2pc-setup
+	@echo "Running 2PC functional tests..."
+	go test -v ./tests/functional/2pc_test.go -timeout 2m
+	@echo "Stopping database servers..."
+	pkill -f "database -port 50051" || true
+	pkill -f "database -port 50052" || true
+
+test-2pc-http: test-2pc-setup
+	@echo "Running HTTP tests with 2PC redundant storage..."
+	go test -v ./tests/functional/http_2pc_test.go -timeout 2m
+	@echo "Stopping database servers..."
+	pkill -f "database -port 50051" || true
+	pkill -f "database -port 50052" || true
+
+test-2pc-all: test-2pc-setup
+	@echo "Running all 2PC tests..."
+	go test -v ./tests/functional/2pc_test.go ./tests/functional/http_2pc_test.go -timeout 3m
+	@echo "Stopping database servers..."
+	pkill -f "database -port 50051" || true
+	pkill -f "database -port 50052" || true
+
+test-2pc-integration: 
+	@echo "Running full 2PC integration test..."
+	$(MAKE) run-2pc-system &
+	@sleep 10
+	@echo "Testing HTTP POST to 2PC system..."
+	curl -X POST http://localhost:8080/data \
+		-H "Content-Type: application/json" \
+		-d '{"sensorId":"integration-test","timestamp":"2025-01-01T12:00:00Z","value":42.5,"unit":"°C"}'
+	@echo ""
+	@echo "Testing HTTP GET from 2PC system..."
+	curl -X GET http://localhost:8080/data/integration-test
+	@echo ""
+	@echo "Stopping 2PC system..."
+	$(MAKE) stop-all
+
+#test targets for each test case
+test-2pc-successful:
+	@echo "Testing successful 2PC transactions..."
+	$(MAKE) test-2pc-setup
+	go test -v ./tests/functional/ -run Test2PCSuccessfulTransaction -timeout 1m
+	pkill -f "database" || true
+
+test-2pc-failed:
+	@echo "Testing failed 2PC transactions..."
+	./bin/database$(BINARY_EXT) -port 50051 -data-limit 1000000 &
+	@sleep 2
+	go test -v ./tests/functional/ -run Test2PCFailedTransaction -timeout 1m
+	pkill -f "database" || true
+
+test-2pc-consistency:
+	@echo "Testing 2PC data consistency..."
+	$(MAKE) test-2pc-setup
+	go test -v ./tests/functional/ -run Test2PCDataConsistency -timeout 1m
+	pkill -f "database" || true
+
+test-2pc-uniqueness:
+	@echo "Testing 2PC transaction ID uniqueness..."
+	$(MAKE) test-2pc-setup
+	go test -v ./tests/functional/ -run Test2PCTransactionIDUniqueness -timeout 1m
+	pkill -f "database" || true
+
+test-2pc-concurrent:
+	@echo "Testing 2PC concurrent transactions..."
+	$(MAKE) test-2pc-setup
+	go test -v ./tests/functional/ -run Test2PCConcurrentTransactions -timeout 2m
+	pkill -f "database" || true
+
+test-task-35-complete:
+	@echo "START TEST"
+	@echo "=========================================="
+	@echo "1. Testing successful 2PC transactions..."
+	$(MAKE) test-2pc-successful
+	@sleep 2
+	@echo ""
+	@echo "2. Testing failed 2PC transactions..."
+	$(MAKE) test-2pc-failed
+	@sleep 2
+	@echo ""
+	@echo "3. Testing 2PC data consistency..."
+	$(MAKE) test-2pc-consistency
+	@sleep 2
+	@echo ""
+	@echo "4. Testing HTTP with redundant storage..."
+	$(MAKE) test-2pc-http
+	@sleep 2
+	@echo ""
+	@echo "5. Testing transaction ID uniqueness..."
+	$(MAKE) test-2pc-uniqueness
+	@sleep 2
+	@echo ""
+	@echo "6. Testing concurrent transactions..."
+	$(MAKE) test-2pc-concurrent
+	@sleep 2
+	@echo ""
+	@echo "=========================================="
+	@echo "COMPLETE TEST"
+
+clean-2pc-tests:
+	@echo "Cleaning up 2PC test processes..."
+	pkill -f "database -port 50051" || true
+	pkill -f "database -port 50052" || true
+	pkill -f "server" || true
+	docker stop mosquitto || true
+	docker rm mosquitto || true
+
 clean:
 ifeq ($(OS),Windows_NT)
 	if exist bin $(RM) bin
