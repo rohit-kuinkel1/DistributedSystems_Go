@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"strings"
 	"testing"
 	"time"
 
@@ -336,8 +337,14 @@ func register2PCHandlers(server *http.Server, tpcClient *database.TwoPhaseCommit
 	// Handler for HTTP GET requests to retrieve data for a specific sensor
 	server.RegisterHandler(
 		http.GET,
-		"/data/*",
+		"*",
 		func(req *http.Request) *http.Response {
+			if !strings.HasPrefix(req.Path, "/data/") {
+				resp := http.NewResponse(http.StatusNotFound)
+				resp.SetBodyString("Not found")
+				return resp
+			}
+
 			path := req.Path
 			if path == "/data/" {
 				resp := http.NewResponse(http.StatusBadRequest)
