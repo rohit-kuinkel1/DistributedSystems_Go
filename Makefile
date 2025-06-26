@@ -70,7 +70,7 @@ test-functional-all:
 	@$(MAKE) start-dual-db
 	@sleep 3
 	go test -v ./tests/functional/2pc_test.go ./tests/functional/http_2pc_test.go -timeout 3m
-	@$(MAKE) stop-components
+	@$(MAKE) stop-all
 
 #performance tests  
 test-performance-all:
@@ -96,7 +96,7 @@ test-2pc-functional:
 	@go test -v ./tests/functional/2pc_test.go -timeout 3m
 	@echo "Testing HTTP with 2PC storage..."
 	@go test -v ./tests/functional/http_2pc_test.go -timeout 3m
-	@$(MAKE) stop-components
+	@$(MAKE) stop-all
 
 
 # ==============================================
@@ -125,7 +125,7 @@ test-2pc-perf:
 	@$(MAKE) start-dual-db
 	@sleep 3
 	go test -v ./tests/performance/2pc_performance_test.go -timeout 10m
-	@$(MAKE) stop-components
+	@$(MAKE) stop-all
 
 
 # ==============================================
@@ -159,13 +159,7 @@ run-mqtt-system: stop-all
 start-dual-db:
 	@./bin/database$(BINARY_EXT) -port 50051 -data-limit 1000000 &
 	@./bin/database$(BINARY_EXT) -port 50052 -data-limit 1000000 &
-
-stop-components:
-	@pkill -f "database" || true
-	@pkill -f "server" || true
-	@pkill -f "gateway" || true
-	@pkill -f "sensor" || true
-
+	
 stop-all:
 	@echo "Stopping all components..."
 ifeq ($(OS),Windows_NT)

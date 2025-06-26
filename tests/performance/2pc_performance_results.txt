@@ -5,53 +5,53 @@ Direct RPC Performance (Baseline):
 -----------------------------------
 Protocol:           Direct-RPC
 Total requests:     10000
-Min RTT:            29.792µs
-Max RTT:            14.09825ms
-Mean RTT:           53.369µs
-Median RTT:         44.458µs
-Standard deviation: 144.738µs
-90th percentile:    70.208µs
-95th percentile:    88.208µs
-99th percentile:    170.209µs
-Requests per second: 18722.69
-Total duration:     534.111375ms
+Min RTT:            29.208µs
+Max RTT:            8.614125ms
+Mean RTT:           51.059µs
+Median RTT:         43.541µs
+Standard deviation: 90.311µs
+90th percentile:    68.792µs
+95th percentile:    84.5µs
+99th percentile:    153.291µs
+Requests per second: 19568.90
+Total duration:     511.014916ms
 
 Two-Phase Commit Performance:
 -----------------------------
 Protocol:           2PC-Sequential
 Total requests:     10000
-Min RTT:            176.416µs
-Max RTT:            23.1975ms
-Mean RTT:           301.503µs
-Median RTT:         271.625µs
-Standard deviation: 252.426µs
-90th percentile:    395.833µs
-95th percentile:    482.75µs
-99th percentile:    693.5µs
-Requests per second: 3314.65
-Total duration:     3.0169095s
+Min RTT:            157.583µs
+Max RTT:            12.021333ms
+Mean RTT:           296.773µs
+Median RTT:         269.541µs
+Standard deviation: 154.194µs
+90th percentile:    384.167µs
+95th percentile:    465.084µs
+99th percentile:    683.375µs
+Requests per second: 3366.99
+Total duration:     2.970012666s
 
 Concurrent 2PC Performance:
 ---------------------------
 Protocol:           2PC-Concurrent
 Total requests:     10000
-Min RTT:            244.708µs
-Max RTT:            12.460167ms
-Mean RTT:           1.046558ms
-Median RTT:         836.437µs
-Standard deviation: 863.85µs
-90th percentile:    1.57125ms
-95th percentile:    1.836625ms
-99th percentile:    5.84525ms
-Requests per second: 9491.18
-Total duration:     1.05361s
+Min RTT:            172.625µs
+Max RTT:            3.815166ms
+Mean RTT:           951.326µs
+Median RTT:         826.291µs
+Standard deviation: 399.993µs
+90th percentile:    1.548667ms
+95th percentile:    1.710208ms
+99th percentile:    2.10775ms
+Requests per second: 10444.45
+Total duration:     957.446125ms
 
 Performance Impact Analysis:
 ============================
-2PC latency overhead: 464.9% (0.248ms additional latency)
-2PC throughput degradation: 82.3% (3314.65 vs 18722.69 req/sec)
-Consistency cost multiplier: 5.65x slower
-Concurrent load impact: 247.1% additional degradation
+2PC latency overhead: 481.2% (0.246ms additional latency)
+2PC throughput degradation: 82.8% (3366.99 vs 19568.90 req/sec)
+Consistency cost multiplier: 5.81x slower
+Concurrent load impact: 220.6% additional degradation
 ============
 - 2PC provides data consistency at the cost of performance
 - Redundant storage introduces latency and throughput overhead
