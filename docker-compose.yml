@@ -9,7 +9,7 @@ services:
     ports:
       - "50051:50051"
     healthcheck:
-      test: ["CMD", "nc", "-z", "localhost", "50051"]
+      test: ["CMD", "nc", "-z", "0.0.0.0", "50051"]
       interval: 5s
       timeout: 3s
       retries: 5
@@ -26,7 +26,7 @@ services:
     ports:
       - "50052:50052"
     healthcheck:
-      test: ["CMD", "nc", "-z", "localhost", "50052"]
+      test: ["CMD", "nc", "-z", "0.0.0.0", "50052"]
       interval: 5s
       timeout: 3s
       retries: 5
@@ -48,7 +48,7 @@ services:
     networks:
       - iiot-network
     healthcheck:
-      test: ["CMD", "nc", "-z", "localhost", "8080"]
+      test: ["CMD", "nc", "-z", "0.0.0.0", "8080"]
       interval: 10s
       timeout: 3s
       retries: 3
