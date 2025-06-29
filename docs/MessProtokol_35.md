@@ -68,6 +68,8 @@ Analysis of performance overhead:
 - Consistency Cost: 481.2% latency increase for ACID guarantees
 ```
 
+**ACID =>ACID in databases ensures reliable transactions. Atomicity(All or nothing), Consistency, Isolation(Independent), Durability**
+
 ### 2. Fault Tolerance vs Performance Trade-off
 **Two-Phase Commit Benefits:**
 - **Atomicity:** Either both databases store data or neither does
@@ -91,12 +93,12 @@ Analysis of performance overhead:
 ## Comparison with Previous Exercises
 
 ### Performance Evolution Across Exercises
-| Task | Protocol | Mean RTT | Throughput | Relative Performance |
-|------|----------|----------|------------|---------------------|
-| **Task 2** | Raw HTTP (Local) | 513.8µs | 1,946 req/sec | Baseline HTTP |
-| **Task 3** | Pure RPC | 47.8µs | 20,914 req/sec | 10.7x faster than HTTP |
-| **Task 3** | HTTP+RPC | 928.2µs | 1,077 req/sec | Layered overhead |
-| **Task 3.5** | 2PC | 296.8µs | 3,367 req/sec | **Consistency + Performance** |
+| Protocol | Mean RTT | Throughput | Relative Performance |
+|----------|----------|------------|----------------------|
+| Raw HTTP (Local) | 513.8µs | 1,946 req/sec | Baseline HTTP |
+| Pure RPC | 47.8µs | 20,914 req/sec | 10.7x faster than HTTP |
+| HTTP+RPC | 928.2µs | 1,077 req/sec | Layered overhead |
+| 2PC | 296.8µs | 3,367 req/sec | **Consistency + Performance** |
 
 ### Insights
 1. **Two-Phase Commit provides optimal balance**: Faster than HTTP+RPC layered approach while ensuring consistency
