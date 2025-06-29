@@ -1,7 +1,24 @@
-# Distributed Systems Project
-This README covers setup, build, test, and run instructions across different operating systems (haven't tested it on Windows so take it with a pinch of salt).
+# Introduction
+This README covers setup, build, test, and run instructions for a complete Industrial IoT system with redundant storage and Two-Phase Commit (2PC) consistency guarantees.
+
+## System Architecture
+
+The system implements a complete Industrial IoT stack with the following components:
+
+```
+[Sensors] --MQTT--> [Gateway] --HTTP--> [Server] --2PC--> [Database1]
+                                                          [Database2]
+```
+
+### Overview
+- **Redundant Storage**: Data is stored across two database instances using Two-Phase Commit protocol
+- **High Availability**: System continues operation if one database fails
+- **Data Consistency**: 2PC ensures atomic commits across both databases
+- **Multiple Protocols**: MQTT (sensors), HTTP (gateway-server), gRPC (server-databases)
+- **Containerized Deployment**: Full Docker Compose support
 
 ## Prerequisites
+
 ### Go Installation
 #### macOS
 ```bash
@@ -34,8 +51,6 @@ go get google.golang.org/grpc
 go get google.golang.org/protobuf
 go get google.golang.org/genproto
 ```
-
-
 
 ### Make Installation
 
@@ -80,71 +95,146 @@ cd Mo-4X-TeamE
 
 ## Building and Running
 
-### Building the Project
-
+### Quick Start with Docker (Recommended)
 ```bash
-#build all components
+make docker-build
+make docker-run
+
+#access the web interface
+open http://localhost:8080
+```
+
+### Manual Build and Run
+```bash
 make build
+
+#start the complete 2PC system
+make run-2pc-system
+
+#or start with MQTT sensors
+make run-mqtt-system
+```
+
+### Individual Component Testing
+```bash
+#run all tests (functional + performance + 2PC)
+make test-all
+
+#run only 2PC tests
+make test-2pc-functional
+make test-2pc-perf
 
 #clean build artifacts
 make clean
-
-#run functional tests
-make test-functional
-
-#run performance tests
-make test-performance
 ```
 
-### Docker Development
+## System Components
 
+### 1. Database Services (Redundant Storage)
+Two identical database instances provide redundant storage:
 ```bash
-#build the Docker images
-make docker-build
+#Primary
+./bin/database -port 50051 -data-limit 1000000
 
-#run with Docker Compose
-make docker-run
+#Redundant / Secondary
+./bin/database -port 50052 -data-limit 1000000
 ```
 
-## Planned Project Structure throughout the Practica;
-
-```
-├── cmd                # Main applications
-│   ├── server         # Server component
-│   ├── gateway        # IoT Gateway component
-│   └── sensor         # Sensor simulator
-├── internal           # Private application code
-│   └── database       # Database implementation
-├── pkg                # Public libraries
-│   ├── http           # HTTP implementation
-│   ├── rpc            # RPC implementation
-│   └── mom            # Message-Oriented Middleware
-├── tests              # Test suite
-│   ├── functional     # Functional tests
-│   └── performance    # Performance tests
-├── bin                # Compiled binaries (generated)
-├── Dockerfile         # Docker configuration
-├── docker-compose.yml # Docker Compose configuration
-├── Makefile           # Build automation
-└── README.md          # This file
-```
-
-## Running Components Individually
-
-### Run the Server
+### 2. HTTP Server with 2PC Coordinator
+The server coordinates Two-Phase Commit transactions across both databases:
 ```bash
-./bin/server    #on Unix systems
-bin\server.exe  #on Windows
+./bin/server -host 0.0.0.0 -port 8080 \
+  -db-addr1 localhost:50051 \
+  -db-addr2 localhost:50052
 ```
 
-### Run the Gateway
+**Key Endpoints:**
+- `POST /data` - Store sensor data using 2PC (atomic across both databases)
+- `GET /data` - Retrieve all sensor data 
+- `GET /data/{sensorId}` - Retrieve data for specific sensor
+- `GET /` - Web interface for viewing data
+- `GET /performance/2pc` - Run 2PC performance test
+
+### 3. IoT Gateway
+Receives MQTT messages from sensors and forwards via HTTP:
 ```bash
-./bin/gateway    #on Unix systems
-bin\gateway.exe  #on Windows
+./bin/gateway -server-host localhost -server-port 8080 \
+  -mqtt-host localhost -mqtt-port 1883
 ```
 
-### Run the Sensor Simulator
+### 4. Sensor Simulators
+Generate realistic sensor data published via MQTT:
 ```bash
-./bin/sensor    #on Unix systems
-bin\sensor.exe  #on Windows
+./bin/sensor -mqtt-host localhost -mqtt-port 1883 \
+  -instances 3 -duration 300
+```
+
+## Two-Phase Commit Implementation
+
+### Working
+1. **Prepare Phase**: Server sends `PrepareTransaction` to both databases
+2. **Decision Phase**: 
+   - If both databases vote "YES" → Send `CommitTransaction` to both
+   - If any database votes "NO" → Send `AbortTransaction` to both
+
+### Transaction Safety
+- **Atomicity**: Either both databases store the data or neither does
+- **Consistency**: Both databases always contain identical data
+- **Durability**: Committed data persists in both databases
+- **Timeout Handling**: Prepared transactions expire after 30 seconds
+
+### Failure Scenarios
+- **Single Database Failure**: Transaction aborts, no data corruption
+- **Network Partition**: Prepared transactions timeout and rollback
+- **Server Crash**: Databases cleanup expired prepared transactions
+
+## Testing
+
+### Functional Tests
+```bash
+#test HTTP + 2PC integration
+make test-2pc-functional
+
+#test complete system functionality  
+go test -v ./tests/functional/...
+```
+
+### Performance Tests
+```bash
+make test-performance-all
+
+make test-http-perf    #HTTP performance
+make test-rpc-perf     #RPC performance  
+make test-2pc-perf     #2PC overhead analysis
+make test-mqtt-perf    #MQTT throughput
+```
+
+## Docker Deployment
+
+### Complete System
+```bash
+#start all services with redundant storage
+docker-compose up
+
+#scale sensor simulators
+docker-compose up --scale sensors=5
+
+#view logs
+docker-compose logs -f server
+docker-compose logs -f database
+```
+
+### Services Overview
+- **database + database2**: Redundant gRPC database services
+- **server**: HTTP server with 2PC coordination
+- **mqtt-broker**: Eclipse Mosquitto MQTT broker
+- **gateway**: MQTT→HTTP bridge
+- **sensors**: Sensor data simulators (scalable)
+
+## Development
+
+### Code Generation
+```bash
+#regenerate gRPC code after protocol changes
+make generate
 ```
