@@ -1,0 +1,59 @@
+Two-Phase Commit Performance Analysis (Task 3.5)
+==============================================
+
+Direct RPC Performance (Baseline):
+-----------------------------------
+Protocol:           Direct-RPC
+Total requests:     10000
+Min RTT:            29.208µs
+Max RTT:            8.614125ms
+Mean RTT:           51.059µs
+Median RTT:         43.541µs
+Standard deviation: 90.311µs
+90th percentile:    68.792µs
+95th percentile:    84.5µs
+99th percentile:    153.291µs
+Requests per second: 19568.90
+Total duration:     511.014916ms
+
+Two-Phase Commit Performance:
+-----------------------------
+Protocol:           2PC-Sequential
+Total requests:     10000
+Min RTT:            157.583µs
+Max RTT:            12.021333ms
+Mean RTT:           296.773µs
+Median RTT:         269.541µs
+Standard deviation: 154.194µs
+90th percentile:    384.167µs
+95th percentile:    465.084µs
+99th percentile:    683.375µs
+Requests per second: 3366.99
+Total duration:     2.970012666s
+
+Concurrent 2PC Performance:
+---------------------------
+Protocol:           2PC-Concurrent
+Total requests:     10000
+Min RTT:            172.625µs
+Max RTT:            3.815166ms
+Mean RTT:           951.326µs
+Median RTT:         826.291µs
+Standard deviation: 399.993µs
+90th percentile:    1.548667ms
+95th percentile:    1.710208ms
+99th percentile:    2.10775ms
+Requests per second: 10444.45
+Total duration:     957.446125ms
+
+Performance Impact Analysis:
+============================
+2PC latency overhead: 481.2% (0.246ms additional latency)
+2PC throughput degradation: 82.8% (3366.99 vs 19568.90 req/sec)
+Consistency cost multiplier: 5.81x slower
+Concurrent load impact: 220.6% additional degradation
+============
+- 2PC provides data consistency at the cost of performance
+- Redundant storage introduces latency and throughput overhead
+- Concurrent load amplifies the performance impact of 2PC coordination
+- The trade off; Consistency and fault tolerance vs. performance

@@ -23,7 +23,7 @@ func TestCompleteHTTPRPCPerformance(t *testing.T) {
 	serverPort := 8083
 	dbAddr := "localhost:50051"
 
-	dbClient, err := database.NewClient(dbAddr)
+	dbClient, err := database.ClientFactory(dbAddr)
 	if err != nil {
 		t.Fatalf("Failed to connect to database service: %v", err)
 	}

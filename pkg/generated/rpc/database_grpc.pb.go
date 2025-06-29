@@ -24,6 +24,9 @@ const (
 	DatabaseService_GetSensorDataBySensorId_FullMethodName = "/database.DatabaseService/GetSensorDataBySensorId"
 	DatabaseService_UpdateSensorData_FullMethodName        = "/database.DatabaseService/UpdateSensorData"
 	DatabaseService_DeleteSensorData_FullMethodName        = "/database.DatabaseService/DeleteSensorData"
+	DatabaseService_PrepareTransaction_FullMethodName      = "/database.DatabaseService/PrepareTransaction"
+	DatabaseService_CommitTransaction_FullMethodName       = "/database.DatabaseService/CommitTransaction"
+	DatabaseService_AbortTransaction_FullMethodName        = "/database.DatabaseService/AbortTransaction"
 )
 
 // DatabaseServiceClient is the client API for DatabaseService service.
@@ -39,6 +42,10 @@ type DatabaseServiceClient interface {
 	UpdateSensorData(ctx context.Context, in *SensorDataRequest, opts ...grpc.CallOption) (*OperationResponse, error)
 	// delete operation
 	DeleteSensorData(ctx context.Context, in *SensorIdRequest, opts ...grpc.CallOption) (*OperationResponse, error)
+	// for the two phase commit operations
+	PrepareTransaction(ctx context.Context, in *TransactionRequest, opts ...grpc.CallOption) (*PrepareResponse, error)
+	CommitTransaction(ctx context.Context, in *TransactionId, opts ...grpc.CallOption) (*OperationResponse, error)
+	AbortTransaction(ctx context.Context, in *TransactionId, opts ...grpc.CallOption) (*OperationResponse, error)
 }
 
 type databaseServiceClient struct {
@@ -99,6 +106,36 @@ func (c *databaseServiceClient) DeleteSensorData(ctx context.Context, in *Sensor
 	return out, nil
 }
 
+func (c *databaseServiceClient) PrepareTransaction(ctx context.Context, in *TransactionRequest, opts ...grpc.CallOption) (*PrepareResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PrepareResponse)
+	err := c.cc.Invoke(ctx, DatabaseService_PrepareTransaction_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *databaseServiceClient) CommitTransaction(ctx context.Context, in *TransactionId, opts ...grpc.CallOption) (*OperationResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(OperationResponse)
+	err := c.cc.Invoke(ctx, DatabaseService_CommitTransaction_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *databaseServiceClient) AbortTransaction(ctx context.Context, in *TransactionId, opts ...grpc.CallOption) (*OperationResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(OperationResponse)
+	err := c.cc.Invoke(ctx, DatabaseService_AbortTransaction_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // DatabaseServiceServer is the server API for DatabaseService service.
 // All implementations must embed UnimplementedDatabaseServiceServer
 // for forward compatibility.
@@ -112,6 +149,10 @@ type DatabaseServiceServer interface {
 	UpdateSensorData(context.Context, *SensorDataRequest) (*OperationResponse, error)
 	// delete operation
 	DeleteSensorData(context.Context, *SensorIdRequest) (*OperationResponse, error)
+	// for the two phase commit operations
+	PrepareTransaction(context.Context, *TransactionRequest) (*PrepareResponse, error)
+	CommitTransaction(context.Context, *TransactionId) (*OperationResponse, error)
+	AbortTransaction(context.Context, *TransactionId) (*OperationResponse, error)
 	mustEmbedUnimplementedDatabaseServiceServer()
 }
 
@@ -136,6 +177,15 @@ func (UnimplementedDatabaseServiceServer) UpdateSensorData(context.Context, *Sen
 }
 func (UnimplementedDatabaseServiceServer) DeleteSensorData(context.Context, *SensorIdRequest) (*OperationResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteSensorData not implemented")
+}
+func (UnimplementedDatabaseServiceServer) PrepareTransaction(context.Context, *TransactionRequest) (*PrepareResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method PrepareTransaction not implemented")
+}
+func (UnimplementedDatabaseServiceServer) CommitTransaction(context.Context, *TransactionId) (*OperationResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CommitTransaction not implemented")
+}
+func (UnimplementedDatabaseServiceServer) AbortTransaction(context.Context, *TransactionId) (*OperationResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AbortTransaction not implemented")
 }
 func (UnimplementedDatabaseServiceServer) mustEmbedUnimplementedDatabaseServiceServer() {}
 func (UnimplementedDatabaseServiceServer) testEmbeddedByValue()                         {}
@@ -248,6 +298,60 @@ func _DatabaseService_DeleteSensorData_Handler(srv interface{}, ctx context.Cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _DatabaseService_PrepareTransaction_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(TransactionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DatabaseServiceServer).PrepareTransaction(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DatabaseService_PrepareTransaction_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DatabaseServiceServer).PrepareTransaction(ctx, req.(*TransactionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _DatabaseService_CommitTransaction_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(TransactionId)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DatabaseServiceServer).CommitTransaction(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DatabaseService_CommitTransaction_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DatabaseServiceServer).CommitTransaction(ctx, req.(*TransactionId))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _DatabaseService_AbortTransaction_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(TransactionId)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DatabaseServiceServer).AbortTransaction(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DatabaseService_AbortTransaction_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DatabaseServiceServer).AbortTransaction(ctx, req.(*TransactionId))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // DatabaseService_ServiceDesc is the grpc.ServiceDesc for DatabaseService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -274,6 +378,18 @@ var DatabaseService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteSensorData",
 			Handler:    _DatabaseService_DeleteSensorData_Handler,
+		},
+		{
+			MethodName: "PrepareTransaction",
+			Handler:    _DatabaseService_PrepareTransaction_Handler,
+		},
+		{
+			MethodName: "CommitTransaction",
+			Handler:    _DatabaseService_CommitTransaction_Handler,
+		},
+		{
+			MethodName: "AbortTransaction",
+			Handler:    _DatabaseService_AbortTransaction_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

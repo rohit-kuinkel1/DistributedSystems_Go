@@ -91,7 +91,7 @@ func (x *SensorDataRequest) GetUnit() string {
 	return ""
 }
 
-// response for all the operations (as defined in DatabaseService)
+// response for all the operations
 type OperationResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
@@ -271,6 +271,166 @@ func (x *SensorIdRequest) GetSensorId() string {
 	return ""
 }
 
+// additions for 3.5
+// Transaction request containing both transaction ID and sensor data
+type TransactionRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	TransactionId string                 `protobuf:"bytes,1,opt,name=transaction_id,json=transactionId,proto3" json:"transaction_id,omitempty"`
+	SensorData    *SensorDataRequest     `protobuf:"bytes,2,opt,name=sensor_data,json=sensorData,proto3" json:"sensor_data,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TransactionRequest) Reset() {
+	*x = TransactionRequest{}
+	mi := &file_pkg_rpc_database_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TransactionRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TransactionRequest) ProtoMessage() {}
+
+func (x *TransactionRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_pkg_rpc_database_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TransactionRequest.ProtoReflect.Descriptor instead.
+func (*TransactionRequest) Descriptor() ([]byte, []int) {
+	return file_pkg_rpc_database_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *TransactionRequest) GetTransactionId() string {
+	if x != nil {
+		return x.TransactionId
+	}
+	return ""
+}
+
+func (x *TransactionRequest) GetSensorData() *SensorDataRequest {
+	if x != nil {
+		return x.SensorData
+	}
+	return nil
+}
+
+// Response for prepare phase with success/failure status
+type PrepareResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	Message       string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
+	TransactionId string                 `protobuf:"bytes,3,opt,name=transaction_id,json=transactionId,proto3" json:"transaction_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PrepareResponse) Reset() {
+	*x = PrepareResponse{}
+	mi := &file_pkg_rpc_database_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PrepareResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PrepareResponse) ProtoMessage() {}
+
+func (x *PrepareResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_pkg_rpc_database_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PrepareResponse.ProtoReflect.Descriptor instead.
+func (*PrepareResponse) Descriptor() ([]byte, []int) {
+	return file_pkg_rpc_database_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *PrepareResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *PrepareResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+func (x *PrepareResponse) GetTransactionId() string {
+	if x != nil {
+		return x.TransactionId
+	}
+	return ""
+}
+
+// Transaction ID message for commit/abort operations
+type TransactionId struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	TransactionId string                 `protobuf:"bytes,1,opt,name=transaction_id,json=transactionId,proto3" json:"transaction_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TransactionId) Reset() {
+	*x = TransactionId{}
+	mi := &file_pkg_rpc_database_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TransactionId) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TransactionId) ProtoMessage() {}
+
+func (x *TransactionId) ProtoReflect() protoreflect.Message {
+	mi := &file_pkg_rpc_database_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TransactionId.ProtoReflect.Descriptor instead.
+func (*TransactionId) Descriptor() ([]byte, []int) {
+	return file_pkg_rpc_database_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *TransactionId) GetTransactionId() string {
+	if x != nil {
+		return x.TransactionId
+	}
+	return ""
+}
+
 var File_pkg_rpc_database_proto protoreflect.FileDescriptor
 
 const file_pkg_rpc_database_proto_rawDesc = "" +
@@ -288,13 +448,26 @@ const file_pkg_rpc_database_proto_rawDesc = "" +
 	"\x04data\x18\x01 \x03(\v2\x1b.database.SensorDataRequestR\x04data\"\x0e\n" +
 	"\fEmptyRequest\".\n" +
 	"\x0fSensorIdRequest\x12\x1b\n" +
-	"\tsensor_id\x18\x01 \x01(\tR\bsensorId2\x8f\x03\n" +
+	"\tsensor_id\x18\x01 \x01(\tR\bsensorId\"y\n" +
+	"\x12TransactionRequest\x12%\n" +
+	"\x0etransaction_id\x18\x01 \x01(\tR\rtransactionId\x12<\n" +
+	"\vsensor_data\x18\x02 \x01(\v2\x1b.database.SensorDataRequestR\n" +
+	"sensorData\"l\n" +
+	"\x0fPrepareResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\x12%\n" +
+	"\x0etransaction_id\x18\x03 \x01(\tR\rtransactionId\"6\n" +
+	"\rTransactionId\x12%\n" +
+	"\x0etransaction_id\x18\x01 \x01(\tR\rtransactionId2\xf3\x04\n" +
 	"\x0fDatabaseService\x12L\n" +
 	"\x10CreateSensorData\x12\x1b.database.SensorDataRequest\x1a\x1b.database.OperationResponse\x12D\n" +
 	"\x10GetAllSensorData\x12\x16.database.EmptyRequest\x1a\x18.database.SensorDataList\x12N\n" +
 	"\x17GetSensorDataBySensorId\x12\x19.database.SensorIdRequest\x1a\x18.database.SensorDataList\x12L\n" +
 	"\x10UpdateSensorData\x12\x1b.database.SensorDataRequest\x1a\x1b.database.OperationResponse\x12J\n" +
-	"\x10DeleteSensorData\x12\x19.database.SensorIdRequest\x1a\x1b.database.OperationResponseB\x13Z\x11pkg/generated/rpcb\x06proto3"
+	"\x10DeleteSensorData\x12\x19.database.SensorIdRequest\x1a\x1b.database.OperationResponse\x12M\n" +
+	"\x12PrepareTransaction\x12\x1c.database.TransactionRequest\x1a\x19.database.PrepareResponse\x12I\n" +
+	"\x11CommitTransaction\x12\x17.database.TransactionId\x1a\x1b.database.OperationResponse\x12H\n" +
+	"\x10AbortTransaction\x12\x17.database.TransactionId\x1a\x1b.database.OperationResponseB\x13Z\x11pkg/generated/rpcb\x06proto3"
 
 var (
 	file_pkg_rpc_database_proto_rawDescOnce sync.Once
@@ -308,33 +481,43 @@ func file_pkg_rpc_database_proto_rawDescGZIP() []byte {
 	return file_pkg_rpc_database_proto_rawDescData
 }
 
-var file_pkg_rpc_database_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_pkg_rpc_database_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_pkg_rpc_database_proto_goTypes = []any{
 	(*SensorDataRequest)(nil),     // 0: database.SensorDataRequest
 	(*OperationResponse)(nil),     // 1: database.OperationResponse
 	(*SensorDataList)(nil),        // 2: database.SensorDataList
 	(*EmptyRequest)(nil),          // 3: database.EmptyRequest
 	(*SensorIdRequest)(nil),       // 4: database.SensorIdRequest
-	(*timestamppb.Timestamp)(nil), // 5: google.protobuf.Timestamp
+	(*TransactionRequest)(nil),    // 5: database.TransactionRequest
+	(*PrepareResponse)(nil),       // 6: database.PrepareResponse
+	(*TransactionId)(nil),         // 7: database.TransactionId
+	(*timestamppb.Timestamp)(nil), // 8: google.protobuf.Timestamp
 }
 var file_pkg_rpc_database_proto_depIdxs = []int32{
-	5, // 0: database.SensorDataRequest.timestamp:type_name -> google.protobuf.Timestamp
-	0, // 1: database.SensorDataList.data:type_name -> database.SensorDataRequest
-	0, // 2: database.DatabaseService.CreateSensorData:input_type -> database.SensorDataRequest
-	3, // 3: database.DatabaseService.GetAllSensorData:input_type -> database.EmptyRequest
-	4, // 4: database.DatabaseService.GetSensorDataBySensorId:input_type -> database.SensorIdRequest
-	0, // 5: database.DatabaseService.UpdateSensorData:input_type -> database.SensorDataRequest
-	4, // 6: database.DatabaseService.DeleteSensorData:input_type -> database.SensorIdRequest
-	1, // 7: database.DatabaseService.CreateSensorData:output_type -> database.OperationResponse
-	2, // 8: database.DatabaseService.GetAllSensorData:output_type -> database.SensorDataList
-	2, // 9: database.DatabaseService.GetSensorDataBySensorId:output_type -> database.SensorDataList
-	1, // 10: database.DatabaseService.UpdateSensorData:output_type -> database.OperationResponse
-	1, // 11: database.DatabaseService.DeleteSensorData:output_type -> database.OperationResponse
-	7, // [7:12] is the sub-list for method output_type
-	2, // [2:7] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	8,  // 0: database.SensorDataRequest.timestamp:type_name -> google.protobuf.Timestamp
+	0,  // 1: database.SensorDataList.data:type_name -> database.SensorDataRequest
+	0,  // 2: database.TransactionRequest.sensor_data:type_name -> database.SensorDataRequest
+	0,  // 3: database.DatabaseService.CreateSensorData:input_type -> database.SensorDataRequest
+	3,  // 4: database.DatabaseService.GetAllSensorData:input_type -> database.EmptyRequest
+	4,  // 5: database.DatabaseService.GetSensorDataBySensorId:input_type -> database.SensorIdRequest
+	0,  // 6: database.DatabaseService.UpdateSensorData:input_type -> database.SensorDataRequest
+	4,  // 7: database.DatabaseService.DeleteSensorData:input_type -> database.SensorIdRequest
+	5,  // 8: database.DatabaseService.PrepareTransaction:input_type -> database.TransactionRequest
+	7,  // 9: database.DatabaseService.CommitTransaction:input_type -> database.TransactionId
+	7,  // 10: database.DatabaseService.AbortTransaction:input_type -> database.TransactionId
+	1,  // 11: database.DatabaseService.CreateSensorData:output_type -> database.OperationResponse
+	2,  // 12: database.DatabaseService.GetAllSensorData:output_type -> database.SensorDataList
+	2,  // 13: database.DatabaseService.GetSensorDataBySensorId:output_type -> database.SensorDataList
+	1,  // 14: database.DatabaseService.UpdateSensorData:output_type -> database.OperationResponse
+	1,  // 15: database.DatabaseService.DeleteSensorData:output_type -> database.OperationResponse
+	6,  // 16: database.DatabaseService.PrepareTransaction:output_type -> database.PrepareResponse
+	1,  // 17: database.DatabaseService.CommitTransaction:output_type -> database.OperationResponse
+	1,  // 18: database.DatabaseService.AbortTransaction:output_type -> database.OperationResponse
+	11, // [11:19] is the sub-list for method output_type
+	3,  // [3:11] is the sub-list for method input_type
+	3,  // [3:3] is the sub-list for extension type_name
+	3,  // [3:3] is the sub-list for extension extendee
+	0,  // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_pkg_rpc_database_proto_init() }
@@ -348,7 +531,7 @@ func file_pkg_rpc_database_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pkg_rpc_database_proto_rawDesc), len(file_pkg_rpc_database_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   5,
+			NumMessages:   8,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

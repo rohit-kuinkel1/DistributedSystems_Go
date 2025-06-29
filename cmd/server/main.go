@@ -18,18 +18,21 @@ import (
 func main() {
 	host := flag.String("host", "0.0.0.0", "Server host")
 	port := flag.Int("port", 8080, "Server port")
-	dbAddr := flag.String("db-addr", "localhost:50051", "Database server address")
+	dbAddr1 := flag.String("db-addr1", "localhost:50051", "First database server address")
+	dbAddr2 := flag.String("db-addr2", "localhost:50052", "Second database server address")
 	flag.Parse()
 
-	dbClient, err := database.NewClient(*dbAddr)
+	//create a 2PC client with both database addresses (one main and one 'redundant')
+	dbAddresses := []string{*dbAddr1, *dbAddr2}
+	tpcClient, err := database.TwoPhaseCommitClientFactory(dbAddresses)
 	if err != nil {
-		log.Fatalf("Failed to connect to database service: %v", err)
+		log.Fatalf("Failed to connect to database services: %v", err)
 	}
-	defer dbClient.Close()
+	defer tpcClient.Close()
 
 	server := http.ServerFactory(*host, *port)
 
-	registerHandlers(server, dbClient)
+	registerHandlers(server, tpcClient)
 
 	err = server.Start()
 	if err != nil {
@@ -46,8 +49,8 @@ func main() {
 }
 
 // registerHandlers registers all HTTP handlers for the server
-func registerHandlers(server *http.Server, dbClient *database.Client) {
-	//for HTTP POST requests to add sensor data
+func registerHandlers(server *http.Server, tpcClient *database.TwoPhaseCommitClient) {
+	//for HTTP POST requests to add sensor data using 2PC
 	server.RegisterHandler(
 		http.POST,
 		"/data",
@@ -61,7 +64,7 @@ func registerHandlers(server *http.Server, dbClient *database.Client) {
 				return resp
 			}
 
-			//now lets validate the data received
+			//validate the data received
 			if sensorData.SensorID == "" {
 				resp := http.NewResponse(http.StatusBadRequest)
 				resp.SetBodyString("Missing sensorId")
@@ -73,24 +76,24 @@ func registerHandlers(server *http.Server, dbClient *database.Client) {
 				sensorData.Timestamp = time.Now()
 			}
 
-			//store the data using the database client now that we have all things needed
-			err = dbClient.AddDataPoint(sensorData)
+			//store the data using Two-Phase Commit across both databases
+			err = tpcClient.AddDataPointWithTwoPhaseCommit(sensorData)
 			if err != nil {
-				log.Printf("Error storing data: %v", err)
+				log.Printf("Error storing data with 2PC: %v", err)
 				resp := http.NewResponse(http.StatusServerError)
 				resp.SetBodyString(fmt.Sprintf("Error storing data: %v", err))
 				return resp
 			}
 
 			log.Printf(
-				"Stored data from sensor %s: %.2f %s",
+				"Stored data from sensor %s: %.2f %s using 2PC",
 				sensorData.SensorID,
 				sensorData.Value,
 				sensorData.Unit,
 			)
 
 			resp := http.NewResponse(http.StatusOK)
-			resp.SetBodyString("Data stored successfully")
+			resp.SetBodyString("Data stored successfully using Two-Phase Commit")
 			return resp
 		},
 	)
@@ -100,7 +103,7 @@ func registerHandlers(server *http.Server, dbClient *database.Client) {
 		http.GET,
 		"/data",
 		func(req *http.Request) *http.Response {
-			allData, err := dbClient.GetAllDataPoints()
+			allData, err := tpcClient.GetAllDataPoints()
 			if err != nil {
 				log.Printf("Error retrieving data: %v", err)
 				resp := http.NewResponse(http.StatusServerError)
@@ -125,7 +128,7 @@ func registerHandlers(server *http.Server, dbClient *database.Client) {
 		http.GET,
 		"/data/*",
 		func(req *http.Request) *http.Response {
-			// Extract sensor ID from path
+			//extract sensor ID from path
 			path := req.Path
 			if path == "/data/" {
 				resp := http.NewResponse(http.StatusBadRequest)
@@ -133,9 +136,9 @@ func registerHandlers(server *http.Server, dbClient *database.Client) {
 				return resp
 			}
 
-			sensorID := path[6:] // Remove "/data/"
+			sensorID := path[6:] //remove "/data/" from the req path
 
-			sensorData, err := dbClient.GetDataPointBySensorId(sensorID)
+			sensorData, err := tpcClient.GetDataPointBySensorId(sensorID)
 			if err != nil {
 				log.Printf("Error retrieving data for sensor %s: %v", sensorID, err)
 				resp := http.NewResponse(http.StatusServerError)
@@ -170,10 +173,11 @@ func registerHandlers(server *http.Server, dbClient *database.Client) {
 				<!DOCTYPE html>
 				<html>
 				<head>
-					<title>IoT Data Viewer</title>
+					<title>IoT Data Viewer - Redundant Storage</title>
 					<style>
 						body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
 						h1 { color: #333; }
+						.info { background-color: #e8f4fd; padding: 10px; border-radius: 5px; margin-bottom: 20px; }
 						table { border-collapse: collapse; width: 100%; }
 						th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
 						th { background-color: #f2f2f2; }
@@ -209,7 +213,10 @@ func registerHandlers(server *http.Server, dbClient *database.Client) {
 					</script>
 				</head>
 				<body>
-					<h1>IoT Sensor Data</h1>
+					<h1>IoT Sensor Data - Redundant Storage</h1>
+					<div class="info">
+						<strong>Two-Phase Commit:</strong> Data is stored redundantly across two database servers for high availability.
+					</div>
 					<table id="dataTable">
 						<thead>
 							<tr>
@@ -229,16 +236,16 @@ func registerHandlers(server *http.Server, dbClient *database.Client) {
 		},
 	)
 
-	//handler for performance testing of the RPC interface
+	//handler for performance testing of the 2PC interface
 	server.RegisterHandler(
 		http.GET,
-		"/performance/rpc",
+		"/performance/2pc",
 		func(req *http.Request) *http.Response {
-			iterations := 1_000_000 //number of test iterations
-			min, max, avg, err := dbClient.RunPerformanceTest(iterations)
+			iterations := 10_000 //smaller number for 2PC becuase it's mad expensive
+			min, max, avg, err := tpcClient.RunTwoPhaseCommitPerformanceTest(iterations)
 			if err != nil {
 				resp := http.NewResponse(http.StatusServerError)
-				resp.SetBodyString(fmt.Sprintf("Performance test failed: %v", err))
+				resp.SetBodyString(fmt.Sprintf("2PC performance test failed: %v", err))
 				return resp
 			}
 
@@ -247,6 +254,7 @@ func registerHandlers(server *http.Server, dbClient *database.Client) {
 				"min_rtt":    min.String(),
 				"max_rtt":    max.String(),
 				"avg_rtt":    avg.String(),
+				"protocol":   "Two-Phase Commit",
 			}
 
 			jsonData, err := json.Marshal(result)
