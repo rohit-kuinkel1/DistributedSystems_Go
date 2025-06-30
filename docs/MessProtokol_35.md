@@ -53,6 +53,9 @@ Leopold Keller  <br>
 - **95th Percentile:** 1,710.2 µs
 - **Standard Deviation:** 400.0 µs
 
+![RTT](images/rtt_35.png)
+![Throughput](images/throughput_35.png)
+
 ## Performance Impact Analysis
 
 ### 1. Consistency Cost Analysis
@@ -99,6 +102,8 @@ Analysis of performance overhead:
 | Pure RPC | 47.8µs | 20,914 req/sec | 10.7x faster than HTTP |
 | HTTP+RPC | 928.2µs | 1,077 req/sec | Layered overhead |
 | 2PC | 296.8µs | 3,367 req/sec | **Consistency + Performance** |
+
+![RTT](images/rtt_throughput_35.png)
 
 ### Insights
 1. **Two-Phase Commit provides optimal balance**: Faster than HTTP+RPC layered approach while ensuring consistency
@@ -163,6 +168,8 @@ Analysis of performance overhead:
 | **95th Percentile** | 84.5 µs | 465.1 µs | +450.4% |
 | **Consistency** | Single Point | Strong (2DB) | ACID Guarantees |
 | **Fault Tolerance** | None | Full Redundancy | High Availability |
+
+![RPCvs2PC](images/rpc_vs_2pc_35.png)
 
 Two-Phase Commit successfully provides good consistency and fault tolerance with quantifiable but acceptable performance overhead of 5.81x latency increase for data integrity requirements.
 
